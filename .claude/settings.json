@@ -1,0 +1,6 @@
+{
+  "additionalDirectories": [
+    "../terminal-shooter",
+    "../book-realtime-communication-server"
+  ]
+}
