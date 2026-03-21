@@ -14,7 +14,7 @@ const (
 	PlayerStatusDead  PlayerStatus = "dead"
 )
 
-// プレイヤーの状態を管理する
+// Player はゲームに参加しているプレイヤーを表す
 type Player struct {
 	PlayerID PlayerID
 
@@ -72,7 +72,6 @@ func (p *Player) FowardPosition() Position {
 	return Position{X: p.position.X + dx, Y: p.position.Y + dy}
 }
 
-// プレイヤーの状態をshared.PlayerStateに変換する
 func (p *Player) ToSharedPlayerState() *shared.PlayerState {
 	p.mu.RLock()
 	defer p.mu.RUnlock()

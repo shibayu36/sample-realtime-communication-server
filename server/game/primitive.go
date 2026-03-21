@@ -11,13 +11,12 @@ type (
 	ItemID   string
 )
 
-// 位置を管理する
+// Position はゲーム空間上の座標を表す
 type Position struct {
 	X int
 	Y int
 }
 
-// 向き
 type Direction string
 
 const (
@@ -27,7 +26,6 @@ const (
 	DirectionRight Direction = "right"
 )
 
-// Directionをshared.Directionに変換する
 func (d Direction) ToSharedDirection() shared.Direction {
 	switch d {
 	case DirectionUp:
@@ -58,7 +56,6 @@ func (d Direction) ToVector() (int, int) {
 	return 0, 0
 }
 
-// shared.DirectionをDirectionに変換する
 func FromSharedDirection(d shared.Direction) (Direction, error) {
 	switch d {
 	case shared.Direction_UP:

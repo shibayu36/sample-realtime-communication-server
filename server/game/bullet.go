@@ -2,6 +2,7 @@ package game
 
 import "sync"
 
+// Bullet は発射された弾を表す。サーバーのゲームループで自動的に移動する。
 type Bullet struct {
 	id        ItemID
 	position  Position
@@ -40,6 +41,7 @@ func (b *Bullet) Position() Position {
 	return b.position
 }
 
+// Update はmoveTickごとに弾を1マス進める。
 func (b *Bullet) Update(_ gameOperationProvider) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
