@@ -6,6 +6,7 @@ import (
 	"sync"
 )
 
+// Broker は接続中の全クライアントを管理し、メッセージの配信を行う
 type Broker struct {
 	clients    map[string]*Client
 	clientsMux sync.RWMutex
@@ -29,7 +30,7 @@ func (b *Broker) RemoveClient(client *Client) {
 	delete(b.clients, client.ID())
 }
 
-// Broadcast クライアント全員にメッセージを配信する
+// Broadcast はクライアント全員にメッセージを配信する
 func (b *Broker) Broadcast(msgType byte, payload []byte) error {
 	b.clientsMux.RLock()
 	defer b.clientsMux.RUnlock()
@@ -43,7 +44,7 @@ func (b *Broker) Broadcast(msgType byte, payload []byte) error {
 	return errors.Join(errs...)
 }
 
-// Send 特定のクライアントにメッセージを送信する
+// Send は特定のクライアントにメッセージを送信する
 func (b *Broker) Send(clientID string, msgType byte, payload []byte) error {
 	b.clientsMux.RLock()
 	defer b.clientsMux.RUnlock()
