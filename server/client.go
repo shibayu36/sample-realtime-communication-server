@@ -8,7 +8,7 @@ import (
 	"github.com/shibayu36/sample-realtime-communication-server/shared/protocol"
 )
 
-// Client represents a connected client
+// Client は接続中のクライアントを表す
 type Client interface {
 	ID() string
 	Send(msgType byte, payload []byte) error
@@ -26,6 +26,7 @@ func (c *client) ID() string {
 	return c.id
 }
 
+// Send はこのクライアントにメッセージを送信する
 func (c *client) Send(msgType byte, payload []byte) error {
 	c.sendMux.Lock()
 	defer c.sendMux.Unlock()
