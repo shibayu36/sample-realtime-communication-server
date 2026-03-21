@@ -12,9 +12,9 @@ import (
 )
 
 type Handler interface {
-	OnConnected(client Client) error
-	OnMessage(client Client, msg protocol.Message) error
-	OnDisconnected(client Client) error
+	OnConnected(client *Client) error
+	OnMessage(client *Client, msg protocol.Message) error
+	OnDisconnected(client *Client) error
 }
 
 type Server struct {
@@ -64,7 +64,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 		return
 	}
 
-	client := &client{id: playerState.GetPlayerId(), conn: conn}
+	client := &Client{id: playerState.GetPlayerId(), conn: conn}
 
 	if err := s.handler.OnConnected(client); err != nil {
 		return

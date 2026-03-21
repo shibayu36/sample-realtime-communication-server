@@ -22,7 +22,7 @@ func NewGameService(broker *Broker, game *game.Game) *GameService {
 	return &GameService{broker: broker, game: game}
 }
 
-func (s *GameService) OnConnected(client Client) error {
+func (s *GameService) OnConnected(client *Client) error {
 	s.broker.AddClient(client)
 	s.game.AddPlayer(game.PlayerID(client.ID()))
 
@@ -45,7 +45,7 @@ func (s *GameService) OnConnected(client Client) error {
 	return nil
 }
 
-func (s *GameService) OnMessage(client Client, msg protocol.Message) error {
+func (s *GameService) OnMessage(client *Client, msg protocol.Message) error {
 	switch msg.Type {
 	case protocol.MsgPlayerState:
 		return s.onReceivePlayerState(client, msg.Payload)
@@ -56,7 +56,7 @@ func (s *GameService) OnMessage(client Client, msg protocol.Message) error {
 	}
 }
 
-func (s *GameService) OnDisconnected(client Client) error {
+func (s *GameService) OnDisconnected(client *Client) error {
 	s.broker.RemoveClient(client)
 	s.game.RemovePlayer(game.PlayerID(client.ID()))
 
@@ -76,7 +76,7 @@ func (s *GameService) OnDisconnected(client Client) error {
 }
 
 // player_stateメッセージを受信した時の処理
-func (s *GameService) onReceivePlayerState(client Client, payload []byte) error {
+func (s *GameService) onReceivePlayerState(client *Client, payload []byte) error {
 	playerID := game.PlayerID(client.ID())
 	playerState := &shared.PlayerState{}
 	if err := proto.Unmarshal(payload, playerState); err != nil {
@@ -109,7 +109,7 @@ func (s *GameService) onReceivePlayerState(client Client, payload []byte) error 
 	return nil
 }
 
-func (s *GameService) onReceivePlayerAction(client Client, payload []byte) error {
+func (s *GameService) onReceivePlayerAction(client *Client, payload []byte) error {
 	playerID := game.PlayerID(client.ID())
 
 	playerActionRequest := &shared.PlayerActionRequest{}

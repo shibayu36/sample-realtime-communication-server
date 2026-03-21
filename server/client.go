@@ -9,25 +9,18 @@ import (
 )
 
 // Client は接続中のクライアントを表す
-type Client interface {
-	ID() string
-	Send(msgType byte, payload []byte) error
-}
-
-type client struct {
+type Client struct {
 	id      string
 	conn    net.Conn
 	sendMux sync.Mutex
 }
 
-var _ Client = (*client)(nil)
-
-func (c *client) ID() string {
+func (c *Client) ID() string {
 	return c.id
 }
 
 // Send はこのクライアントにメッセージを送信する
-func (c *client) Send(msgType byte, payload []byte) error {
+func (c *Client) Send(msgType byte, payload []byte) error {
 	c.sendMux.Lock()
 	defer c.sendMux.Unlock()
 

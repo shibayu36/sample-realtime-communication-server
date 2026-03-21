@@ -7,23 +7,23 @@ import (
 )
 
 type Broker struct {
-	clients    map[string]Client
+	clients    map[string]*Client
 	clientsMux sync.RWMutex
 }
 
 func NewBroker() *Broker {
 	return &Broker{
-		clients: make(map[string]Client),
+		clients: make(map[string]*Client),
 	}
 }
 
-func (b *Broker) AddClient(client Client) {
+func (b *Broker) AddClient(client *Client) {
 	b.clientsMux.Lock()
 	defer b.clientsMux.Unlock()
 	b.clients[client.ID()] = client
 }
 
-func (b *Broker) RemoveClient(client Client) {
+func (b *Broker) RemoveClient(client *Client) {
 	b.clientsMux.Lock()
 	defer b.clientsMux.Unlock()
 	delete(b.clients, client.ID())
