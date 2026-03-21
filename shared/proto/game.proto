@@ -28,7 +28,7 @@ message ItemState {
 // アイテムのステータス
 enum ItemStatus {
   ACTIVE = 0;
-  REMOVED = 1;
+  REMOVED = 1; // クライアントにアイテムの削除を通知するために使う
 }
 
 // 向き
@@ -42,8 +42,8 @@ enum Direction {
 // プレイヤーのステータス
 enum Status {
   ALIVE = 0;
-  DISCONNECTED = 1;
-  DEAD = 2;
+  DISCONNECTED = 1; // サーバーから切断を通知するために使う
+  DEAD = 2;         // 弾に当たって死亡
 }
 
 // アイテムの種類
@@ -58,5 +58,5 @@ message PlayerActionRequest {
 
 // プレイヤーからのアクションの種類
 enum ActionType {
-  SHOOT_BULLET = 0;
+  SHOOT_BULLET = 0; // 弾の発射
 }
