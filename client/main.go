@@ -44,6 +44,95 @@ type Game struct {
 	height     int
 }
 
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	screen, err := tcell.NewScreen()
+	if err != nil {
+		return fmt.Errorf("failed to create new screen: %w", err)
+	}
+	defer screen.Fini()
+
+	if err := screen.Init(); err != nil {
+		return fmt.Errorf("failed to initialize screen: %w", err)
+	}
+
+	conn, err := net.Dial("tcp", "localhost:8080")
+	if err != nil {
+		return fmt.Errorf("failed to connect to server: %w", err)
+	}
+	defer conn.Close()
+
+	clientID := uuid.New().String()
+
+	game := &Game{
+		conn:       conn,
+		myPlayerID: clientID,
+		screen:     screen,
+		width:      30,
+		height:     30,
+		players:    make(map[string]Player),
+		items:      make(map[string]Item),
+	}
+
+	// プレイヤーをwidthとheightの範囲内でランダムに配置
+	game.players[clientID] = Player{
+		ID:        clientID,
+		Position:  Position{X: rand.Intn(game.width), Y: rand.Intn(game.height)},
+		Direction: shared.Direction_UP,
+		Status:    shared.Status_ALIVE,
+	}
+
+	// キー入力イベントをチャネル経由で受け取る
+	eventChan := make(chan tcell.Event)
+	go func() {
+		for {
+			eventChan <- screen.PollEvent()
+		}
+	}()
+
+	// サーバーからのメッセージを別goroutineで受信し続ける
+	messageChan := make(chan protocol.Message)
+	go func() {
+		for {
+			msg, err := protocol.ReadMessage(conn)
+			if err != nil {
+				close(messageChan)
+				return
+			}
+			messageChan <- msg
+		}
+	}()
+
+	// 自分の初期位置を送信
+	game.publishMyState()
+
+	// メインループ: キー入力・サーバーメッセージ・描画タイマーの3つのイベントを処理する
+	ticker := time.NewTicker(50 * time.Millisecond)
+	for {
+		select {
+		case event := <-eventChan:
+			if game.handleEvent(event) {
+				return nil
+			}
+		case msg, ok := <-messageChan:
+			if !ok {
+				return fmt.Errorf("server connection closed")
+			}
+			game.handleMessage(msg)
+		case <-ticker.C:
+			game.draw()
+		}
+	}
+}
+
+// publishMyState は自分のプレイヤー状態をサーバーに送信する。
+// サーバーはこの状態を受け取り、他の全クライアントに配信する。
 func (g *Game) publishMyState() {
 	myPlayer := g.getMyPlayer()
 
@@ -67,6 +156,79 @@ func (g *Game) publishMyState() {
 	})
 }
 
+// handleMessage はサーバーから受信したメッセージを処理する。
+// メッセージ種別に応じてプレイヤー状態やアイテム状態を更新する。
+func (g *Game) handleMessage(msg protocol.Message) {
+	switch msg.Type {
+	case protocol.MsgPlayerState:
+		// 他プレイヤーの位置・向き・状態が配信されてくる
+		playerState := &shared.PlayerState{}
+		if err := proto.Unmarshal(msg.Payload, playerState); err != nil {
+			return
+		}
+
+		if playerState.GetStatus() == shared.Status_DISCONNECTED {
+			delete(g.players, playerState.GetPlayerId())
+			return
+		}
+
+		g.players[playerState.GetPlayerId()] = Player{
+			ID: playerState.GetPlayerId(),
+			Position: Position{
+				X: int(playerState.GetPosition().GetX()),
+				Y: int(playerState.GetPosition().GetY()),
+			},
+			Direction: playerState.GetDirection(),
+			Status:    playerState.GetStatus(),
+		}
+	case protocol.MsgItemState:
+		// 弾などのアイテム状態が配信されてくる（アイテムの移動はサーバーが計算する）
+		itemState := &shared.ItemState{}
+		if err := proto.Unmarshal(msg.Payload, itemState); err != nil {
+			return
+		}
+
+		if itemState.GetStatus() == shared.ItemStatus_REMOVED {
+			delete(g.items, itemState.GetItemId())
+			return
+		}
+
+		g.items[itemState.GetItemId()] = Item{
+			ID:   itemState.GetItemId(),
+			Type: itemState.GetType(),
+			Position: Position{
+				X: int(itemState.GetPosition().GetX()),
+				Y: int(itemState.GetPosition().GetY()),
+			},
+		}
+	}
+}
+
+// handleEvent はキー入力イベントを処理する。終了操作の場合はtrueを返す。
+func (g *Game) handleEvent(event tcell.Event) bool {
+	switch ev := event.(type) {
+	case *tcell.EventKey:
+		switch ev.Key() {
+		case tcell.KeyEscape, tcell.KeyCtrlC:
+			return true
+		case tcell.KeyLeft:
+			g.movePlayer(shared.Direction_LEFT)
+		case tcell.KeyRight:
+			g.movePlayer(shared.Direction_RIGHT)
+		case tcell.KeyUp:
+			g.movePlayer(shared.Direction_UP)
+		case tcell.KeyDown:
+			g.movePlayer(shared.Direction_DOWN)
+		case tcell.KeyRune:
+			if ev.Rune() == ' ' {
+				g.shootBullet()
+			}
+		}
+	}
+	return false
+}
+
+// movePlayer は自プレイヤーを指定方向に移動させ、変更があればサーバーに送信する。
 func (g *Game) movePlayer(direction shared.Direction) {
 	myPlayer := g.getMyPlayer()
 	oldX, oldY := myPlayer.Position.X, myPlayer.Position.Y
@@ -94,35 +256,15 @@ func (g *Game) movePlayer(direction shared.Direction) {
 
 	g.players[g.myPlayerID] = myPlayer
 
-	// 位置か方向が変更されたら自分の状態をサーバーに送る
+	// 位置か方向が変更された場合のみサーバーに送信する（不要な通信を減らすため）
 	if oldX != myPlayer.Position.X || oldY != myPlayer.Position.Y || oldDirection != direction {
 		g.publishMyState()
 	}
 }
 
-func (g *Game) handleEvent(event tcell.Event) bool {
-	switch ev := event.(type) {
-	case *tcell.EventKey:
-		switch ev.Key() {
-		case tcell.KeyEscape, tcell.KeyCtrlC:
-			return true
-		case tcell.KeyLeft:
-			g.movePlayer(shared.Direction_LEFT)
-		case tcell.KeyRight:
-			g.movePlayer(shared.Direction_RIGHT)
-		case tcell.KeyUp:
-			g.movePlayer(shared.Direction_UP)
-		case tcell.KeyDown:
-			g.movePlayer(shared.Direction_DOWN)
-		case tcell.KeyRune:
-			if ev.Rune() == ' ' {
-				g.shootBullet()
-			}
-		}
-	}
-	return false
-}
-
+// shootBullet は弾発射アクションをサーバーに送信する。
+// クライアントは「撃ちたい」というリクエストを送るだけで、
+// 弾の生成や移動計算はサーバーが行う。
 func (g *Game) shootBullet() {
 	req := &shared.PlayerActionRequest{
 		Type: shared.ActionType_SHOOT_BULLET,
@@ -139,25 +281,6 @@ func (g *Game) shootBullet() {
 	})
 }
 
-func getPlayerRune(player Player) rune {
-	if player.Status == shared.Status_DEAD {
-		return 'x'
-	}
-
-	switch player.Direction {
-	case shared.Direction_UP:
-		return '^'
-	case shared.Direction_DOWN:
-		return 'v'
-	case shared.Direction_LEFT:
-		return '<'
-	case shared.Direction_RIGHT:
-		return '>'
-	default:
-		return '^'
-	}
-}
-
 const (
 	bgColor          = tcell.Color232
 	mapColor         = tcell.Color255
@@ -166,6 +289,7 @@ const (
 	itemColor        = tcell.Color226
 )
 
+// draw はゲーム画面を描画する。マップ・プレイヤー・アイテムを順に描画する。
 func (g *Game) draw() {
 	g.screen.Clear()
 
@@ -212,138 +336,25 @@ func (g *Game) draw() {
 	g.screen.Show()
 }
 
+func getPlayerRune(player Player) rune {
+	if player.Status == shared.Status_DEAD {
+		return 'x'
+	}
+
+	switch player.Direction {
+	case shared.Direction_UP:
+		return '^'
+	case shared.Direction_DOWN:
+		return 'v'
+	case shared.Direction_LEFT:
+		return '<'
+	case shared.Direction_RIGHT:
+		return '>'
+	default:
+		return '^'
+	}
+}
+
 func (g *Game) getMyPlayer() Player {
 	return g.players[g.myPlayerID]
-}
-
-func (g *Game) handleMessage(msg protocol.Message) {
-	switch msg.Type {
-	case protocol.MsgPlayerState:
-		playerState := &shared.PlayerState{}
-		if err := proto.Unmarshal(msg.Payload, playerState); err != nil {
-			return
-		}
-
-		if playerState.GetStatus() == shared.Status_DISCONNECTED {
-			delete(g.players, playerState.GetPlayerId())
-			return
-		}
-
-		g.players[playerState.GetPlayerId()] = Player{
-			ID: playerState.GetPlayerId(),
-			Position: Position{
-				X: int(playerState.GetPosition().GetX()),
-				Y: int(playerState.GetPosition().GetY()),
-			},
-			Direction: playerState.GetDirection(),
-			Status:    playerState.GetStatus(),
-		}
-	case protocol.MsgItemState:
-		itemState := &shared.ItemState{}
-		if err := proto.Unmarshal(msg.Payload, itemState); err != nil {
-			return
-		}
-
-		if itemState.GetStatus() == shared.ItemStatus_REMOVED {
-			delete(g.items, itemState.GetItemId())
-			return
-		}
-
-		g.items[itemState.GetItemId()] = Item{
-			ID:   itemState.GetItemId(),
-			Type: itemState.GetType(),
-			Position: Position{
-				X: int(itemState.GetPosition().GetX()),
-				Y: int(itemState.GetPosition().GetY()),
-			},
-		}
-	}
-}
-
-func run() error {
-	screen, err := tcell.NewScreen()
-	if err != nil {
-		return fmt.Errorf("failed to create new screen: %w", err)
-	}
-	defer screen.Fini()
-
-	if err := screen.Init(); err != nil {
-		return fmt.Errorf("failed to initialize screen: %w", err)
-	}
-
-	// TCP接続
-	conn, err := net.Dial("tcp", "localhost:8080")
-	if err != nil {
-		return fmt.Errorf("failed to connect to server: %w", err)
-	}
-	defer conn.Close()
-
-	clientID := uuid.New().String()
-
-	game := &Game{
-		conn:       conn,
-		myPlayerID: clientID,
-		screen:     screen,
-		width:      30,
-		height:     30,
-		players:    make(map[string]Player),
-		items:      make(map[string]Item),
-	}
-
-	// プレイヤーをwidthとheightの範囲内でランダムに配置
-	game.players[clientID] = Player{
-		ID:        clientID,
-		Position:  Position{X: rand.Intn(game.width), Y: rand.Intn(game.height)},
-		Direction: shared.Direction_UP,
-		Status:    shared.Status_ALIVE,
-	}
-
-	// screenからのイベントを受け取る
-	eventChan := make(chan tcell.Event)
-	go func() {
-		for {
-			eventChan <- screen.PollEvent()
-		}
-	}()
-
-	// サーバーからのメッセージ受信ループ
-	messageChan := make(chan protocol.Message)
-	go func() {
-		for {
-			msg, err := protocol.ReadMessage(conn)
-			if err != nil {
-				close(messageChan)
-				return
-			}
-			messageChan <- msg
-		}
-	}()
-
-	// 自分の初期位置を送信
-	game.publishMyState()
-
-	// メインループ
-	ticker := time.NewTicker(50 * time.Millisecond)
-	for {
-		select {
-		case event := <-eventChan:
-			if game.handleEvent(event) {
-				return nil
-			}
-		case msg, ok := <-messageChan:
-			if !ok {
-				return fmt.Errorf("server connection closed")
-			}
-			game.handleMessage(msg)
-		case <-ticker.C:
-			game.draw()
-		}
-	}
-}
-
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
 }
