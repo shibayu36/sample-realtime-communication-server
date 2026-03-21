@@ -9,7 +9,8 @@ import (
 	"github.com/shibayu36/sample-realtime-communication-server/shared"
 )
 
-// 1つのゲーム内の状態を管理する
+// Game はサーバー側で保持するゲーム空間の状態を管理する。
+// プレイヤー・アイテムの状態管理、ゲームループによる更新、衝突判定を担う。
 type Game struct {
 	Width  int
 	Height int
@@ -80,25 +81,27 @@ func (g *Game) StartUpdateLoop(ctx context.Context) <-chan UpdatedResult {
 	return updatedCh
 }
 
-// ゲーム状態を更新する
+// update は1tickごとのゲーム状態更新を行う。
 func (g *Game) update(updatedCh chan<- UpdatedResult) {
 	items := g.GetItems()
 
 	updatedItems := []Item{}
 	updatedPlayers := []*Player{}
 
+	// 各アイテムを1tick進める
 	for _, item := range items {
 		if item.Update(g) {
 			updatedItems = append(updatedItems, item)
 		}
 	}
+	// 盤面外に出たアイテムを削除する
 	for _, updatedItem := range updatedItems {
-		// 盤面外に出たアイテムを削除する
 		if !g.isWithinBounds(updatedItem) {
 			g.RemoveItem(updatedItem.ID())
 		}
 	}
 
+	// プレイヤーとアイテムの衝突を検出し、それぞれに衝突時の処理を委譲する
 	for _, collision := range g.detectCollisions() {
 		if collision.Player.OnCollideWith(collision.Item, g) {
 			updatedPlayers = append(updatedPlayers, collision.Player)
@@ -109,7 +112,7 @@ func (g *Game) update(updatedCh chan<- UpdatedResult) {
 		}
 	}
 
-	// 新しく追加されたアイテムがあれば追加してFlushする
+	// このtick中に追加されたアイテムを取り込む
 	g.mu.Lock()
 	for _, item := range g.AddedItems {
 		updatedItems = append(updatedItems, item)
@@ -117,6 +120,7 @@ func (g *Game) update(updatedCh chan<- UpdatedResult) {
 	g.AddedItems = make(map[ItemID]Item)
 	g.mu.Unlock()
 
+	// 変更があった場合、配信ループに通知する
 	if len(updatedItems) > 0 {
 		updatedCh <- UpdatedResult{Type: UpdatedResultTypeItemsUpdated}
 	}
@@ -133,12 +137,13 @@ func (g *Game) detectCollisions() []collision {
 
 	var collisions []collision
 
-	// プレイヤーとアイテムの衝突を検出
+	// アイテムを座標ごとにグルーピング
 	itemPosMap := make(map[Position][]Item)
 	for _, item := range g.Items {
 		itemPosMap[item.Position()] = append(itemPosMap[item.Position()], item)
 	}
 
+	// プレイヤーと同じ座標にいるアイテムを衝突として検出
 	for _, player := range g.Players {
 		for _, item := range itemPosMap[player.Position()] {
 			collisions = append(collisions, collision{
@@ -157,7 +162,6 @@ func (g *Game) isWithinBounds(item Item) bool {
 	return pos.X >= 0 && pos.X < g.Width && pos.Y >= 0 && pos.Y < g.Height
 }
 
-// プレイヤーを追加する
 func (g *Game) AddPlayer(playerID PlayerID) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -169,14 +173,12 @@ func (g *Game) AddPlayer(playerID PlayerID) {
 	}
 }
 
-// プレイヤーを削除する
 func (g *Game) RemovePlayer(playerID PlayerID) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	delete(g.Players, playerID)
 }
 
-// プレイヤーの位置を更新する
 func (g *Game) MovePlayer(playerID PlayerID, position Position, direction Direction) *Player {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -190,7 +192,6 @@ func (g *Game) MovePlayer(playerID PlayerID, position Position, direction Direct
 	return player
 }
 
-// プレイヤーのステータスを更新する
 func (g *Game) UpdatePlayerStatus(playerID PlayerID, status PlayerStatus) *Player {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -203,35 +204,30 @@ func (g *Game) UpdatePlayerStatus(playerID PlayerID, status PlayerStatus) *Playe
 	return player
 }
 
-// プレイヤー一覧を取得する
 func (g *Game) GetPlayers() map[PlayerID]*Player {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return shared.CopyMap(g.Players)
 }
 
-// アイテム一覧を取得する
 func (g *Game) GetItems() map[ItemID]Item {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return shared.CopyMap(g.Items)
 }
 
-// 削除されたアイテム一覧を取得する
 func (g *Game) GetRemovedItems() map[ItemID]Item {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return shared.CopyMap(g.RemovedItems)
 }
 
-// 削除されたアイテムをクリアする
 func (g *Game) ClearRemovedItem(itemID ItemID) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	delete(g.RemovedItems, itemID)
 }
 
-// アイテムを削除する
 func (g *Game) RemoveItem(itemID ItemID) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -251,7 +247,6 @@ func (g *Game) addItemWithoutLock(item Item) {
 	}
 }
 
-// 弾を追加する
 func (g *Game) AddBullet(position Position, direction Direction) ItemID {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -260,7 +255,7 @@ func (g *Game) AddBullet(position Position, direction Direction) ItemID {
 	return bullet.ID()
 }
 
-// あるプレイヤーから弾を発射する
+// ShootBullet はプレイヤーの前方に弾を生成する。弾の移動はゲームループが管理する。
 func (g *Game) ShootBullet(playerID PlayerID) ItemID {
 	g.mu.Lock()
 	defer g.mu.Unlock()
