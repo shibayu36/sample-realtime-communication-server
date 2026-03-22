@@ -11,12 +11,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Handler はクライアントの接続・メッセージ受信・切断のイベントを処理する
 type Handler interface {
+	// OnConnected はクライアントが接続した時に呼ばれる
 	OnConnected(client *Client) error
+	// OnMessage はクライアントからメッセージを受信した時に呼ばれる
 	OnMessage(client *Client, msg protocol.Message) error
+	// OnDisconnected はクライアントが切断した時に呼ばれる
 	OnDisconnected(client *Client) error
 }
 
+// Server はクライアントからのTCP接続を受け付け、接続・メッセージ受信・切断のイベントをHandlerに委譲する
 type Server struct {
 	listener net.Listener
 	handler  Handler
@@ -50,10 +55,11 @@ func (s *Server) Serve() {
 	}
 }
 
+// handleConnection はクライアント1つの接続から切断までを処理する
 func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// 最初のメッセージからPlayerStateをunmarshalしてclientIDを取得
+	// 最初のメッセージからクライアントIDを取得し、Handlerに接続を通知する
 	firstMsg, err := protocol.ReadMessage(conn)
 	if err != nil {
 		return
@@ -74,10 +80,10 @@ func (s *Server) handleConnection(conn net.Conn) {
 		s.handler.OnDisconnected(client)
 	}()
 
-	// 最初のメッセージもハンドリングする
+	// clientID取得に使った最初のメッセージも、通常のメッセージとして処理する
 	s.handler.OnMessage(client, firstMsg)
 
-	// メッセージループ
+	// クライアントが切断するまでメッセージを読み続ける
 	for {
 		msg, err := protocol.ReadMessage(conn)
 		if err != nil {
