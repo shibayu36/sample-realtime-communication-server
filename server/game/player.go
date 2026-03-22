@@ -1,11 +1,6 @@
 package game
 
-import (
-	"fmt"
-	"sync"
-
-	"github.com/shibayu36/sample-realtime-communication-server/shared"
-)
+import "sync"
 
 type PlayerStatus string
 
@@ -70,31 +65,6 @@ func (p *Player) FowardPosition() Position {
 	defer p.mu.RUnlock()
 	dx, dy := p.direction.ToVector()
 	return Position{X: p.position.X + dx, Y: p.position.Y + dy}
-}
-
-func (p *Player) ToSharedPlayerState() *shared.PlayerState {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return &shared.PlayerState{
-		PlayerId: string(p.PlayerID),
-		Position: &shared.Position{
-			X: int32(p.position.X),
-			Y: int32(p.position.Y),
-		},
-		Direction: p.direction.ToSharedDirection(),
-		Status:    p.status.ToSharedStatus(),
-	}
-}
-
-func (ps PlayerStatus) ToSharedStatus() shared.Status {
-	switch ps {
-	case PlayerStatusAlive:
-		return shared.Status_ALIVE
-	case PlayerStatusDead:
-		return shared.Status_DEAD
-	default:
-		panic(fmt.Sprintf("invalid player status: %s", ps))
-	}
 }
 
 func (p *Player) OnCollideWith(other collidable, provider gameOperationProvider) bool {

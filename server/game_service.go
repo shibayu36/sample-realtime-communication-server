@@ -33,7 +33,7 @@ func (s *GameService) OnConnected(client *Client) error {
 			continue
 		}
 
-		payload, err := proto.Marshal(player.ToSharedPlayerState())
+		payload, err := proto.Marshal(toSharedPlayerState(player))
 		if err != nil {
 			return fmt.Errorf("failed to marshal player state: %w", err)
 		}
@@ -98,7 +98,7 @@ func (s *GameService) onReceivePlayerState(client *Client, payload []byte) error
 		return fmt.Errorf("failed to unmarshal player state: %w", err)
 	}
 
-	direction, err := game.FromSharedDirection(playerState.GetDirection())
+	direction, err := fromSharedDirection(playerState.GetDirection())
 	if err != nil {
 		// 方向が不正な場合は無視する
 		return nil
@@ -113,7 +113,7 @@ func (s *GameService) onReceivePlayerState(client *Client, payload []byte) error
 		direction,
 	)
 
-	broadcastPayload, err := proto.Marshal(updatedPlayer.ToSharedPlayerState())
+	broadcastPayload, err := proto.Marshal(toSharedPlayerState(updatedPlayer))
 	if err != nil {
 		return fmt.Errorf("failed to marshal player state: %w", err)
 	}
@@ -198,10 +198,51 @@ func (s *GameService) publishItemStates() {
 	}
 }
 
+// publishPlayerStates は全プレイヤーの現在の状態をクライアントに配信する
+func (s *GameService) publishPlayerStates() {
+	for _, player := range s.game.GetPlayers() {
+		payload, err := proto.Marshal(toSharedPlayerState(player))
+		if err != nil {
+			continue
+		}
+		s.broker.Broadcast(protocol.MsgPlayerState, payload)
+	}
+}
+
+func toSharedPlayerState(player *game.Player) *shared.PlayerState {
+	var status shared.Status
+	switch player.Status() {
+	case game.PlayerStatusAlive:
+		status = shared.Status_ALIVE
+	case game.PlayerStatusDead:
+		status = shared.Status_DEAD
+	default:
+		panic(fmt.Sprintf("invalid player status: %s", player.Status()))
+	}
+
+	return &shared.PlayerState{
+		PlayerId:  string(player.PlayerID),
+		Position: &shared.Position{
+			X: int32(player.Position().X),
+			Y: int32(player.Position().Y),
+		},
+		Direction: toSharedDirection(player.Direction()),
+		Status:    status,
+	}
+}
+
 func toActiveSharedItemState(item game.Item) *shared.ItemState {
+	var itemType shared.ItemType
+	switch item.Type() {
+	case game.ItemTypeBullet:
+		itemType = shared.ItemType_BULLET
+	default:
+		panic(fmt.Sprintf("invalid item type: %s", item.Type()))
+	}
+
 	return &shared.ItemState{
 		ItemId: string(item.ID()),
-		Type:   item.Type().ToSharedItemType(),
+		Type:   itemType,
 		Position: &shared.Position{
 			X: int32(item.Position().X),
 			Y: int32(item.Position().Y),
@@ -210,13 +251,32 @@ func toActiveSharedItemState(item game.Item) *shared.ItemState {
 	}
 }
 
-// publishPlayerStates は全プレイヤーの現在の状態をクライアントに配信する
-func (s *GameService) publishPlayerStates() {
-	for _, player := range s.game.GetPlayers() {
-		payload, err := proto.Marshal(player.ToSharedPlayerState())
-		if err != nil {
-			continue
-		}
-		s.broker.Broadcast(protocol.MsgPlayerState, payload)
+func toSharedDirection(d game.Direction) shared.Direction {
+	switch d {
+	case game.DirectionUp:
+		return shared.Direction_UP
+	case game.DirectionDown:
+		return shared.Direction_DOWN
+	case game.DirectionLeft:
+		return shared.Direction_LEFT
+	case game.DirectionRight:
+		return shared.Direction_RIGHT
+	default:
+		panic(fmt.Sprintf("invalid direction: %s", d))
+	}
+}
+
+func fromSharedDirection(d shared.Direction) (game.Direction, error) {
+	switch d {
+	case shared.Direction_UP:
+		return game.DirectionUp, nil
+	case shared.Direction_DOWN:
+		return game.DirectionDown, nil
+	case shared.Direction_LEFT:
+		return game.DirectionLeft, nil
+	case shared.Direction_RIGHT:
+		return game.DirectionRight, nil
+	default:
+		return "", fmt.Errorf("invalid direction: %d", d)
 	}
 }
