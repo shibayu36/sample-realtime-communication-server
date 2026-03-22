@@ -23,14 +23,17 @@ func run() error {
 	defer cancel()
 
 	broker := NewBroker()
-	g := game.NewGame(30, 30)
+	g := game.NewGame(30, 30) // 30x30のゲーム空間を作成
+
 	service := NewGameService(broker, g)
 
+	// GameServiceはServerのHandlerとして、クライアントからのメッセージをGameに反映
 	server, err := NewServer(":8080", service)
 	if err != nil {
 		return err
 	}
 
+	// Gameの状態更新ループを開始し、更新があればGameServiceがクライアントに配信
 	updatedCh := g.StartUpdateLoop(ctx)
 	service.StartPublishLoop(ctx, updatedCh)
 
@@ -39,6 +42,8 @@ func run() error {
 		server.Close()
 	}()
 
+	// クライアントからの接続を受け付ける
 	server.Serve()
+
 	return nil
 }
