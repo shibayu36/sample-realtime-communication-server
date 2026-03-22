@@ -22,12 +22,12 @@ func NewGameService(broker *Broker, game *game.Game) *GameService {
 	return &GameService{broker: broker, game: game}
 }
 
-// OnConnected はクライアントをBrokerとGameに登録し、既存プレイヤーの状態を送信する
+// OnConnected はクライアントをBrokerとGameに登録し、既存のプレイヤーとアイテムの状態を送信する
 func (s *GameService) OnConnected(client *Client) error {
 	s.broker.AddClient(client)
 	s.game.AddPlayer(game.PlayerID(client.ID()))
 
-	// 現在の他プレイヤーの位置をそのクライアントに送信する
+	// 現在の他プレイヤーの状態をそのクライアントに送信する
 	for playerID, player := range s.game.GetPlayers() {
 		if playerID == game.PlayerID(client.ID()) {
 			continue
@@ -40,6 +40,18 @@ func (s *GameService) OnConnected(client *Client) error {
 
 		if err := s.broker.Send(client.ID(), protocol.MsgPlayerState, payload); err != nil {
 			return fmt.Errorf("failed to send player state: %w", err)
+		}
+	}
+
+	// 現在のアイテムの状態をそのクライアントに送信する
+	for _, item := range s.game.GetItems() {
+		payload, err := proto.Marshal(toActiveSharedItemState(item))
+		if err != nil {
+			return fmt.Errorf("failed to marshal item state: %w", err)
+		}
+
+		if err := s.broker.Send(client.ID(), protocol.MsgItemState, payload); err != nil {
+			return fmt.Errorf("failed to send item state: %w", err)
 		}
 	}
 
@@ -159,17 +171,7 @@ func (s *GameService) publishStates(updatedResult game.UpdatedResult) {
 func (s *GameService) publishItemStates() {
 	// Activeなアイテムを送信する
 	for _, item := range s.game.GetItems() {
-		itemState := &shared.ItemState{
-			ItemId: string(item.ID()),
-			Type:   item.Type().ToSharedItemType(),
-			Position: &shared.Position{
-				X: int32(item.Position().X),
-				Y: int32(item.Position().Y),
-			},
-			Status: shared.ItemStatus_ACTIVE,
-		}
-
-		payload, err := proto.Marshal(itemState)
+		payload, err := proto.Marshal(toActiveSharedItemState(item))
 		if err != nil {
 			continue
 		}
@@ -193,6 +195,18 @@ func (s *GameService) publishItemStates() {
 
 		// Broadcastが成功したら削除アイテムは不要になる
 		s.game.ClearRemovedItem(removedItem.ID())
+	}
+}
+
+func toActiveSharedItemState(item game.Item) *shared.ItemState {
+	return &shared.ItemState{
+		ItemId: string(item.ID()),
+		Type:   item.Type().ToSharedItemType(),
+		Position: &shared.Position{
+			X: int32(item.Position().X),
+			Y: int32(item.Position().Y),
+		},
+		Status: shared.ItemStatus_ACTIVE,
 	}
 }
 
