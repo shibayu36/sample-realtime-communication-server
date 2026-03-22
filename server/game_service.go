@@ -22,6 +22,7 @@ func NewGameService(broker *Broker, game *game.Game) *GameService {
 	return &GameService{broker: broker, game: game}
 }
 
+// OnConnected はクライアントをBrokerとGameに登録し、既存プレイヤーの状態を送信する
 func (s *GameService) OnConnected(client *Client) error {
 	s.broker.AddClient(client)
 	s.game.AddPlayer(game.PlayerID(client.ID()))
@@ -45,6 +46,7 @@ func (s *GameService) OnConnected(client *Client) error {
 	return nil
 }
 
+// OnMessage はメッセージ種別に応じて適切なハンドラに振り分ける
 func (s *GameService) OnMessage(client *Client, msg protocol.Message) error {
 	switch msg.Type {
 	case protocol.MsgPlayerState:
@@ -56,6 +58,7 @@ func (s *GameService) OnMessage(client *Client, msg protocol.Message) error {
 	}
 }
 
+// OnDisconnected はクライアントをBrokerとGameから削除し、切断を全員に通知する
 func (s *GameService) OnDisconnected(client *Client) error {
 	s.broker.RemoveClient(client)
 	s.game.RemovePlayer(game.PlayerID(client.ID()))
@@ -75,7 +78,7 @@ func (s *GameService) OnDisconnected(client *Client) error {
 	return nil
 }
 
-// player_stateメッセージを受信した時の処理
+// onReceivePlayerState はクライアントから受け取ったプレイヤーの位置・向きをゲームに反映し、全クライアントに配信する
 func (s *GameService) onReceivePlayerState(client *Client, payload []byte) error {
 	playerID := game.PlayerID(client.ID())
 	playerState := &shared.PlayerState{}
@@ -109,6 +112,7 @@ func (s *GameService) onReceivePlayerState(client *Client, payload []byte) error
 	return nil
 }
 
+// onReceivePlayerAction はクライアントからのアクションを処理する（弾の発射など）
 func (s *GameService) onReceivePlayerAction(client *Client, payload []byte) error {
 	playerID := game.PlayerID(client.ID())
 
@@ -125,7 +129,7 @@ func (s *GameService) onReceivePlayerAction(client *Client, payload []byte) erro
 	return nil
 }
 
-// StartPublishLoop ゲームの状態を定期的にpublishするループを開始する
+// StartPublishLoop はゲームループで更新された状態を検知し、クライアントに配信するループを開始する
 func (s *GameService) StartPublishLoop(ctx context.Context, updatedCh <-chan game.UpdatedResult) {
 	go func() {
 		for {
@@ -151,6 +155,7 @@ func (s *GameService) publishStates(updatedResult game.UpdatedResult) {
 	}
 }
 
+// publishItemStates は全アイテムの現在の状態をクライアントに配信する
 func (s *GameService) publishItemStates() {
 	// Activeなアイテムを送信する
 	for _, item := range s.game.GetItems() {
@@ -191,6 +196,7 @@ func (s *GameService) publishItemStates() {
 	}
 }
 
+// publishPlayerStates は全プレイヤーの現在の状態をクライアントに配信する
 func (s *GameService) publishPlayerStates() {
 	for _, player := range s.game.GetPlayers() {
 		payload, err := proto.Marshal(player.ToSharedPlayerState())
