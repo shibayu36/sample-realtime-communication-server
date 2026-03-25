@@ -281,78 +281,84 @@ func (g *Game) shootBullet() {
 	})
 }
 
-const (
-	bgColor          = tcell.Color232
-	mapColor         = tcell.Color255
-	myPlayerColor    = tcell.Color46
-	otherPlayerColor = tcell.Color196
-	itemColor        = tcell.Color226
-)
-
 // draw はゲーム画面を描画する。マップ・プレイヤー・アイテムを順に描画する。
 func (g *Game) draw() {
 	g.screen.Clear()
 
-	defaultStyle := tcell.StyleDefault.
-		Background(bgColor).
-		Foreground(mapColor)
+	style := tcell.StyleDefault.
+		Background(tcell.ColorWhite).
+		Foreground(tcell.ColorBlack)
 
 	// マップを描画
 	for y := range g.height {
 		for x := range g.width {
-			g.screen.SetContent(x, y, '.', nil, defaultStyle)
+			g.screen.SetContent(x, y, '.', nil, style)
 		}
 	}
 
 	// プレイヤーを描画
-	myPlayerStyle := defaultStyle.Foreground(myPlayerColor)
-	otherPlayerStyle := defaultStyle.Foreground(otherPlayerColor)
 	for _, player := range g.players {
-		style := otherPlayerStyle
-		if player.ID == g.myPlayerID {
-			style = myPlayerStyle
-		}
+		isMyPlayer := player.ID == g.myPlayerID
 		g.screen.SetContent(
 			player.Position.X,
 			player.Position.Y,
-			getPlayerRune(player),
+			getPlayerRune(player, isMyPlayer),
 			nil,
 			style,
 		)
 	}
 
 	// アイテムを描画
-	itemStyle := defaultStyle.Foreground(itemColor)
 	for _, item := range g.items {
 		g.screen.SetContent(
 			item.Position.X,
 			item.Position.Y,
 			'*',
 			nil,
-			itemStyle,
+			style,
 		)
 	}
 
 	g.screen.Show()
 }
 
-func getPlayerRune(player Player) rune {
-	if player.Status == shared.Status_DEAD {
-		return 'x'
-	}
+type playerRunes struct {
+	directions map[shared.Direction]rune
+	dead       rune
+}
 
-	switch player.Direction {
-	case shared.Direction_UP:
-		return '^'
-	case shared.Direction_DOWN:
-		return 'v'
-	case shared.Direction_LEFT:
-		return '<'
-	case shared.Direction_RIGHT:
-		return '>'
-	default:
-		return '^'
+var myPlayerRunes = playerRunes{
+	directions: map[shared.Direction]rune{
+		shared.Direction_UP:    '▲',
+		shared.Direction_DOWN:  '▼',
+		shared.Direction_LEFT:  '◀',
+		shared.Direction_RIGHT: '▶',
+	},
+	dead: 'X',
+}
+
+var otherPlayerRunes = playerRunes{
+	directions: map[shared.Direction]rune{
+		shared.Direction_UP:    '^',
+		shared.Direction_DOWN:  'v',
+		shared.Direction_LEFT:  '<',
+		shared.Direction_RIGHT: '>',
+	},
+	dead: 'x',
+}
+
+func getPlayerRune(player Player, isMyPlayer bool) rune {
+	runes := otherPlayerRunes
+	if isMyPlayer {
+		runes = myPlayerRunes
 	}
+	if player.Status == shared.Status_DEAD {
+		return runes.dead
+	}
+	if r, ok := runes.directions[player.Direction]; ok {
+		return r
+	}
+	return runes.directions[shared.Direction_UP]
 }
 
 func (g *Game) getMyPlayer() Player {
