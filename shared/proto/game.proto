@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package samplerealtimeserver;
+option go_package = "github.com/shibayu36/sample-realtime-communication-server/shared";
+
+// 位置情報
+message Position {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+// プレイヤーの状態
+message PlayerState {
+  string player_id = 1;
+  Position position = 2;
+  Status status = 3;
+  Direction direction = 4;
+}
+
+// アイテムの状態
+message ItemState {
+  string item_id = 1;
+  ItemType type = 2;
+  Position position = 3;
+  ItemStatus status = 4;
+}
+
+// アイテムのステータス
+enum ItemStatus {
+  ACTIVE = 0;
+  REMOVED = 1; // クライアントにアイテムの削除を通知するために使う
+}
+
+// 向き
+enum Direction {
+  UP = 0;
+  DOWN = 1;
+  LEFT = 2;
+  RIGHT = 3;
+}
+
+// プレイヤーのステータス
+enum Status {
+  ALIVE = 0;
+  DISCONNECTED = 1; // サーバーから切断を通知するために使う
+  DEAD = 2;         // 弾に当たって死亡
+}
+
+// アイテムの種類
+enum ItemType {
+  BULLET = 0;
+}
+
+// プレイヤーからのアクション
+message PlayerActionRequest {
+  ActionType type = 1;
+}
+
+// プレイヤーからのアクションの種類
+enum ActionType {
+  SHOOT_BULLET = 0; // 弾の発射
+}
