@@ -6,9 +6,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/shibayu36/sample-realtime-communication-server/shared"
+	"github.com/google/uuid"
 	"github.com/shibayu36/sample-realtime-communication-server/shared/protocol"
-	"google.golang.org/protobuf/proto"
 )
 
 // Handler はクライアントの接続・メッセージ受信・切断のイベントを処理する
@@ -59,18 +58,7 @@ func (s *Server) Serve() {
 func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// 最初のメッセージからクライアントIDを取得し、Handlerに接続を通知する
-	firstMsg, err := protocol.ReadMessage(conn)
-	if err != nil {
-		return
-	}
-
-	playerState := &shared.PlayerState{}
-	if err := proto.Unmarshal(firstMsg.Payload, playerState); err != nil {
-		return
-	}
-
-	client := &Client{id: playerState.GetPlayerId(), conn: conn}
+	client := &Client{id: uuid.New().String(), conn: conn}
 
 	if err := s.handler.OnConnected(client); err != nil {
 		return
@@ -79,9 +67,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 	defer func() {
 		s.handler.OnDisconnected(client)
 	}()
-
-	// clientID取得に使った最初のメッセージも、通常のメッセージとして処理する
-	s.handler.OnMessage(client, firstMsg)
 
 	// クライアントが切断するまでメッセージを読み続ける
 	for {

@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/google/uuid"
 	"github.com/shibayu36/sample-realtime-communication-server/shared"
 	"github.com/shibayu36/sample-realtime-communication-server/shared/protocol"
 	"google.golang.org/protobuf/proto"
@@ -68,11 +66,23 @@ func run() error {
 	}
 	defer conn.Close()
 
-	clientID := uuid.New().String()
+	// サーバーがプレイヤーIDと初期位置を採番してwelcomeとして送ってくる。
+	// 自プレイヤーの初期化はwelcomeを受け取ってから行う。
+	welcome, err := protocol.ReadMessage(conn)
+	if err != nil {
+		return fmt.Errorf("failed to read welcome: %w", err)
+	}
+	if welcome.Type != protocol.MsgWelcome {
+		return fmt.Errorf("expected welcome message, got 0x%02x", welcome.Type)
+	}
+	welcomeState := &shared.PlayerState{}
+	if err := proto.Unmarshal(welcome.Payload, welcomeState); err != nil {
+		return fmt.Errorf("failed to unmarshal welcome: %w", err)
+	}
 
 	game := &Game{
 		conn:       conn,
-		myPlayerID: clientID,
+		myPlayerID: welcomeState.GetPlayerId(),
 		screen:     screen,
 		width:      30,
 		height:     30,
@@ -80,12 +90,14 @@ func run() error {
 		items:      make(map[string]Item),
 	}
 
-	// プレイヤーをwidthとheightの範囲内でランダムに配置
-	game.players[clientID] = Player{
-		ID:        clientID,
-		Position:  Position{X: rand.Intn(game.width), Y: rand.Intn(game.height)},
-		Direction: shared.Direction_UP,
-		Status:    shared.Status_ALIVE,
+	game.players[game.myPlayerID] = Player{
+		ID: game.myPlayerID,
+		Position: Position{
+			X: int(welcomeState.GetPosition().GetX()),
+			Y: int(welcomeState.GetPosition().GetY()),
+		},
+		Direction: welcomeState.GetDirection(),
+		Status:    welcomeState.GetStatus(),
 	}
 
 	// キー入力イベントをチャネル経由で受け取る
@@ -108,9 +120,6 @@ func run() error {
 			messageChan <- msg
 		}
 	}()
-
-	// 自分の初期位置を送信
-	game.publishMyState()
 
 	// メインループ: キー入力・サーバーメッセージ・描画タイマーの3つのイベントを処理する
 	ticker := time.NewTicker(50 * time.Millisecond)

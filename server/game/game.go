@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -162,15 +163,18 @@ func (g *Game) isWithinBounds(item Item) bool {
 	return pos.X >= 0 && pos.X < g.Width && pos.Y >= 0 && pos.Y < g.Height
 }
 
-func (g *Game) AddPlayer(playerID PlayerID) {
+// AddPlayer は新規プレイヤーをランダムな初期位置で追加し、追加されたプレイヤーを返す。
+func (g *Game) AddPlayer(playerID PlayerID) *Player {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.Players[playerID] = &Player{
+	player := &Player{
 		PlayerID:  playerID,
-		position:  Position{X: 0, Y: 0},
+		position:  Position{X: rand.Intn(g.Width), Y: rand.Intn(g.Height)},
 		direction: DirectionUp,
 		status:    PlayerStatusAlive,
 	}
+	g.Players[playerID] = player
+	return player
 }
 
 func (g *Game) RemovePlayer(playerID PlayerID) {

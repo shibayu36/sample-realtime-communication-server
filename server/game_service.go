@@ -22,10 +22,20 @@ func NewGameService(broker *Broker, game *game.Game) *GameService {
 	return &GameService{broker: broker, game: game}
 }
 
-// OnConnected はクライアントをBrokerとGameに登録し、既存のプレイヤーとアイテムの状態を送信する
+// OnConnected はプレイヤーをBrokerとGameに登録し、新規接続プレイヤーへwelcomeを送り、さらに既存のプレイヤーとアイテムの状態を送信する。
+// また、新規プレイヤーの存在を他クライアントへ通知する。
 func (s *GameService) OnConnected(client *Client) error {
 	s.broker.AddClient(client)
-	s.game.AddPlayer(game.PlayerID(client.ID()))
+	newPlayer := s.game.AddPlayer(game.PlayerID(client.ID()))
+
+	// IDや初期位置などを本人にwelcomeメッセージとして送信する
+	newPlayerStatePayload, err := proto.Marshal(toSharedPlayerState(newPlayer))
+	if err != nil {
+		return fmt.Errorf("failed to marshal welcome: %w", err)
+	}
+	if err := s.broker.Send(client.ID(), protocol.MsgWelcome, newPlayerStatePayload); err != nil {
+		return fmt.Errorf("failed to send welcome: %w", err)
+	}
 
 	// 現在の他プレイヤーの状態をそのクライアントに送信する
 	for playerID, player := range s.game.GetPlayers() {
@@ -53,6 +63,11 @@ func (s *GameService) OnConnected(client *Client) error {
 		if err := s.broker.Send(client.ID(), protocol.MsgItemState, payload); err != nil {
 			return fmt.Errorf("failed to send item state: %w", err)
 		}
+	}
+
+	// 新規プレイヤーの参加を全クライアントに配信する
+	if err := s.broker.Broadcast(protocol.MsgPlayerState, newPlayerStatePayload); err != nil {
+		return fmt.Errorf("failed to broadcast new player state: %w", err)
 	}
 
 	return nil
@@ -221,7 +236,7 @@ func toSharedPlayerState(player *game.Player) *shared.PlayerState {
 	}
 
 	return &shared.PlayerState{
-		PlayerId:  string(player.PlayerID),
+		PlayerId: string(player.PlayerID),
 		Position: &shared.Position{
 			X: int32(player.Position().X),
 			Y: int32(player.Position().Y),
