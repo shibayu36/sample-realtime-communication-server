@@ -6,7 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 	"github.com/shibayu36/sample-realtime-communication-server/shared"
 	"github.com/shibayu36/sample-realtime-communication-server/shared/protocol"
 	"google.golang.org/protobuf/proto"
@@ -84,8 +85,8 @@ func run() error {
 		conn:       conn,
 		myPlayerID: welcomeState.GetPlayerId(),
 		screen:     screen,
-		width:      30,
-		height:     30,
+		width:      40,
+		height:     20,
 		players:    make(map[string]Player),
 		items:      make(map[string]Item),
 	}
@@ -99,14 +100,6 @@ func run() error {
 		Direction: welcomeState.GetDirection(),
 		Status:    welcomeState.GetStatus(),
 	}
-
-	// キー入力イベントをチャネル経由で受け取る
-	eventChan := make(chan tcell.Event)
-	go func() {
-		for {
-			eventChan <- screen.PollEvent()
-		}
-	}()
 
 	// サーバーからのメッセージを別goroutineで受信し続ける
 	messageChan := make(chan protocol.Message)
@@ -122,10 +115,10 @@ func run() error {
 	}()
 
 	// メインループ: キー入力・サーバーメッセージ・描画タイマーの3つのイベントを処理する
-	ticker := time.NewTicker(50 * time.Millisecond)
+	ticker := time.NewTicker(time.Second / 60)
 	for {
 		select {
-		case event := <-eventChan:
+		case event := <-screen.EventQ():
 			if game.handleEvent(event) {
 				return nil
 			}
@@ -229,7 +222,7 @@ func (g *Game) handleEvent(event tcell.Event) bool {
 		case tcell.KeyDown:
 			g.movePlayer(shared.Direction_DOWN)
 		case tcell.KeyRune:
-			if ev.Rune() == ' ' {
+			if ev.Str() == " " {
 				g.shootBullet()
 			}
 		}
@@ -295,8 +288,8 @@ func (g *Game) draw() {
 	g.screen.Clear()
 
 	style := tcell.StyleDefault.
-		Background(tcell.ColorWhite).
-		Foreground(tcell.ColorBlack)
+		Background(color.White).
+		Foreground(color.Black)
 
 	// マップを描画
 	for y := range g.height {

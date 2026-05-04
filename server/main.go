@@ -23,7 +23,7 @@ func run() error {
 	defer cancel()
 
 	broker := NewBroker()
-	g := game.NewGame(30, 30) // 30x30のゲーム空間を作成
+	g := game.NewGame(40, 20) // 40x20のゲーム空間を作成
 
 	service := NewGameService(broker, g)
 
