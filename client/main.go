@@ -13,16 +13,16 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Position struct {
-	X int
-	Y int
-}
-
 type Player struct {
 	ID        string
 	Position  Position
 	Direction shared.Direction
 	Status    shared.Status
+}
+
+type Position struct {
+	X int
+	Y int
 }
 
 type Item struct {
@@ -36,11 +36,12 @@ type Game struct {
 
 	screen tcell.Screen
 
+	width  int
+	height int
+
 	myPlayerID string
 	players    map[string]Player
 	items      map[string]Item
-	width      int
-	height     int
 }
 
 func main() {
@@ -69,25 +70,28 @@ func run() error {
 
 	// サーバーがwelcomeとして自プレイヤーのIDと初期位置、マップサイズなどの初期化情報を送ってくる。
 	// 自プレイヤーの初期化はwelcomeを受け取ってから行う。
-	welcome, err := protocol.ReadMessage(conn)
+	msg, err := protocol.ReadMessage(conn)
 	if err != nil {
 		return fmt.Errorf("failed to read welcome: %w", err)
 	}
-	if welcome.Type != protocol.MsgWelcome {
-		return fmt.Errorf("expected welcome message, got 0x%02x", welcome.Type)
+	if msg.Type != protocol.MsgWelcome {
+		return fmt.Errorf("expected welcome message, got 0x%02x", msg.Type)
 	}
-	welcomeMsg := &shared.Welcome{}
-	if err := proto.Unmarshal(welcome.Payload, welcomeMsg); err != nil {
+	welcome := &shared.Welcome{}
+	if err := proto.Unmarshal(msg.Payload, welcome); err != nil {
 		return fmt.Errorf("failed to unmarshal welcome: %w", err)
 	}
-	myPlayerState := welcomeMsg.GetPlayer()
+	myPlayerState := welcome.GetPlayerState()
 
 	game := &Game{
-		conn:       conn,
+		conn: conn,
+
+		screen: screen,
+
+		width:  int(welcome.GetMapWidth()),
+		height: int(welcome.GetMapHeight()),
+
 		myPlayerID: myPlayerState.GetPlayerId(),
-		screen:     screen,
-		width:      int(welcomeMsg.GetMapWidth()),
-		height:     int(welcomeMsg.GetMapHeight()),
 		players:    make(map[string]Player),
 		items:      make(map[string]Item),
 	}

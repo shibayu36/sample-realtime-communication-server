@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 
 	"github.com/google/uuid"
@@ -59,12 +60,14 @@ func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	client := &Client{id: uuid.New().String(), conn: conn}
+	slog.Info("client connected", "playerId", client.ID())
 
 	if err := s.handler.OnConnected(client); err != nil {
 		return
 	}
 
 	defer func() {
+		slog.Info("client disconnected", "playerId", client.ID())
 		s.handler.OnDisconnected(client)
 	}()
 

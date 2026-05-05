@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -42,7 +43,7 @@ func run() error {
 		server.Close()
 	}()
 
-	// クライアントからの接続を受け付ける
+	slog.Info("server started", "addr", ":8080")
 	server.Serve()
 
 	return nil

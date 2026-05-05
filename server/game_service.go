@@ -10,7 +10,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// GameService クライアントからのメッセージをゲームの状態に反映し、さらに他のクライアントに状態同期をする役割を持つ
+// GameService はクライアントからのメッセージをゲームの状態に反映し、
+// さらに他のクライアントに状態同期をする役割を持つ
 type GameService struct {
 	broker *Broker
 	game   *game.Game
@@ -31,9 +32,9 @@ func (s *GameService) OnConnected(client *Client) error {
 	// IDや初期位置、マップサイズなどを本人にwelcomeメッセージとして送信する
 	newPlayerState := toSharedPlayerState(newPlayer)
 	welcomePayload, err := proto.Marshal(&shared.Welcome{
-		Player:    newPlayerState,
-		MapWidth:  int32(s.game.Width),
-		MapHeight: int32(s.game.Height),
+		PlayerState: newPlayerState,
+		MapWidth:    int32(s.game.Width),
+		MapHeight:   int32(s.game.Height),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to marshal welcome: %w", err)

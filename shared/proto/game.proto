@@ -9,6 +9,14 @@ message Position {
   int32 y = 2;
 }
 
+// 向き
+enum Direction {
+  UP = 0;
+  DOWN = 1;
+  LEFT = 2;
+  RIGHT = 3;
+}
+
 // プレイヤーの状態
 message PlayerState {
   string player_id = 1;
@@ -19,7 +27,7 @@ message PlayerState {
 
 // 接続直後にサーバーがクライアントへ1度だけ送る初期化情報
 message Welcome {
-  PlayerState player = 1;
+  PlayerState player_state = 1;
   int32 map_width = 2;
   int32 map_height = 3;
 }
@@ -36,14 +44,6 @@ message ItemState {
 enum ItemStatus {
   ACTIVE = 0;
   REMOVED = 1; // クライアントにアイテムの削除を通知するために使う
-}
-
-// 向き
-enum Direction {
-  UP = 0;
-  DOWN = 1;
-  LEFT = 2;
-  RIGHT = 3;
 }
 
 // プレイヤーのステータス

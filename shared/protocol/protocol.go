@@ -31,7 +31,7 @@ type Message struct {
 	Payload []byte
 }
 
-// WriteMessage は conn にメッセージを書き込む
+// WriteMessage は1つのメッセージを書き込む
 func WriteMessage(w io.Writer, msg Message) error {
 	header := make([]byte, headerSize)
 	header[0] = msg.Type
@@ -46,7 +46,7 @@ func WriteMessage(w io.Writer, msg Message) error {
 	return nil
 }
 
-// ReadMessage は conn から1メッセージを読み取る
+// ReadMessage は1つのメッセージを読み取る。
 // TCPはストリームなので Read だと途中までしか読めない場合がある。
 // io.ReadFull は指定バイト数きっちり読むまで待つ。
 func ReadMessage(r io.Reader) (Message, error) {
