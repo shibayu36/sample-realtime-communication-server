@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shibayu36/sample-realtime-communication-server/server/game"
-	"github.com/shibayu36/sample-realtime-communication-server/shared"
-	"github.com/shibayu36/sample-realtime-communication-server/shared/protocol"
+	"realtime-communication-server/server/game"
+	"realtime-communication-server/shared"
+	"realtime-communication-server/shared/protocol"
 	"google.golang.org/protobuf/proto"
 )
 

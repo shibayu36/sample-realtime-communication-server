@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/shibayu36/sample-realtime-communication-server/shared/protocol"
+	"realtime-communication-server/shared/protocol"
 )
 
 // Client は接続中のクライアントを表す

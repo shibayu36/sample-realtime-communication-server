@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/shibayu36/sample-realtime-communication-server/shared"
+	"realtime-communication-server/shared"
 )
 
 // Game はサーバー側で保持するゲーム空間の状態を管理する。

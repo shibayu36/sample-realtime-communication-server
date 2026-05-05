@@ -8,8 +8,8 @@ import (
 
 	"github.com/gdamore/tcell/v3"
 	"github.com/gdamore/tcell/v3/color"
-	"github.com/shibayu36/sample-realtime-communication-server/shared"
-	"github.com/shibayu36/sample-realtime-communication-server/shared/protocol"
+	"realtime-communication-server/shared"
+	"realtime-communication-server/shared/protocol"
 	"google.golang.org/protobuf/proto"
 )
 

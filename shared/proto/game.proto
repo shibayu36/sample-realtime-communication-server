@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package samplerealtimeserver;
-option go_package = "github.com/shibayu36/sample-realtime-communication-server/shared";
+option go_package = "realtime-communication-server/shared";
 
 // 位置情報
 message Position {

@@ -1,4 +1,4 @@
-module github.com/shibayu36/sample-realtime-communication-server
+module realtime-communication-server
 
 go 1.26.1
 

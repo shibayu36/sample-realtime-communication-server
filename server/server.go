@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/google/uuid"
-	"github.com/shibayu36/sample-realtime-communication-server/shared/protocol"
+	"realtime-communication-server/shared/protocol"
 )
 
 // Handler はクライアントの接続・メッセージ受信・切断のイベントを処理する

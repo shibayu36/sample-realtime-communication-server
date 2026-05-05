@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/shibayu36/sample-realtime-communication-server/server/game"
+	"realtime-communication-server/server/game"
 )
 
 func main() {
