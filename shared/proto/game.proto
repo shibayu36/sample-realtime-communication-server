@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package samplerealtimeserver;
+option go_package = "realtime-communication-server/shared";
+
+// 位置情報
+message Position {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+// 向き
+enum Direction {
+  UP = 0;
+  DOWN = 1;
+  LEFT = 2;
+  RIGHT = 3;
+}
+
+// プレイヤーの状態
+message PlayerState {
+  string player_id = 1;
+  Position position = 2;
+  Direction direction = 3;
+}
+
+// 接続直後にサーバーがクライアントへ1度だけ送る初期化情報
+message Welcome {
+  PlayerState player_state = 1;
+  int32 map_width = 2;
+  int32 map_height = 3;
+}

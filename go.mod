@@ -2,7 +2,10 @@ module realtime-communication-server
 
 go 1.27.1
 
-require github.com/gdamore/tcell/v3 v3.3.0
+require (
+	github.com/gdamore/tcell/v3 v3.3.0
+	google.golang.org/protobuf v1.36.11
+)
 
 require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
