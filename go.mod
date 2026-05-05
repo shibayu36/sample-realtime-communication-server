@@ -5,6 +5,7 @@ go 1.26.1
 require (
 	github.com/gdamore/tcell/v3 v3.3.0
 	github.com/google/uuid v1.6.0
+	google.golang.org/protobuf v1.36.11
 )
 
 require (

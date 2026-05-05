@@ -3,32 +3,27 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"os"
 	"time"
 
 	"github.com/gdamore/tcell/v3"
 	"github.com/gdamore/tcell/v3/color"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
+	"realtime-communication-server/shared"
+	"realtime-communication-server/shared/protocol"
 )
 
 type Player struct {
 	Position  Position
-	Direction Direction
+	Direction shared.Direction
 }
 
 type Position struct {
 	X int
 	Y int
 }
-
-type Direction int
-
-const (
-	DirectionUp Direction = iota
-	DirectionDown
-	DirectionLeft
-	DirectionRight
-)
 
 type Game struct {
 	screen tcell.Screen
@@ -58,26 +53,48 @@ func run() error {
 		return fmt.Errorf("failed to initialize screen: %w", err)
 	}
 
-	// 自プレイヤーを作成。実装を進めるとサーバー経由で初期化される
-	myPlayerID := uuid.New().String()
+	conn, err := net.Dial("tcp", "localhost:8080")
+	if err != nil {
+		return fmt.Errorf("failed to connect to server: %w", err)
+	}
+	defer conn.Close()
+
+	// サーバーがwelcomeとして自プレイヤーのIDと初期位置、マップサイズなどの初期化情報を送ってくる。
+	// 自プレイヤーの初期化はwelcomeを受け取ってから行う。
+	msg, err := protocol.ReadMessage(conn)
+	if err != nil {
+		return fmt.Errorf("failed to read welcome: %w", err)
+	}
+	if msg.Type != protocol.MsgWelcome {
+		return fmt.Errorf("expected welcome message, got 0x%02x", msg.Type)
+	}
+	welcome := &shared.Welcome{}
+	if err := proto.Unmarshal(msg.Payload, welcome); err != nil {
+		return fmt.Errorf("failed to unmarshal welcome: %w", err)
+	}
+	myPlayerState := welcome.GetPlayerState()
+
 	game := &Game{
 		screen: screen,
 
-		width:  40,
-		height: 20,
+		width:  int(welcome.GetMapWidth()),
+		height: int(welcome.GetMapHeight()),
 
-		myPlayerID: myPlayerID,
+		myPlayerID: myPlayerState.GetPlayerId(),
 		players:    make(map[string]Player),
 	}
-	game.players[myPlayerID] = Player{
-		Position:  Position{X: rand.Intn(game.width), Y: rand.Intn(game.height)},
-		Direction: DirectionUp,
+	game.players[game.myPlayerID] = Player{
+		Position: Position{
+			X: int(myPlayerState.GetPosition().GetX()),
+			Y: int(myPlayerState.GetPosition().GetY()),
+		},
+		Direction: myPlayerState.GetDirection(),
 	}
 
 	// 動かないダミープレイヤー。実装を進めるとサーバー経由の他プレイヤーに置き換わる
 	game.players[uuid.New().String()] = Player{
 		Position:  Position{X: rand.Intn(game.width), Y: rand.Intn(game.height)},
-		Direction: DirectionDown,
+		Direction: shared.Direction_DOWN,
 	}
 
 	// メインループ: キー入力と描画タイマーの2つを処理する
@@ -102,13 +119,13 @@ func (g *Game) handleEvent(event tcell.Event) bool {
 		case tcell.KeyEscape, tcell.KeyCtrlC:
 			return true
 		case tcell.KeyLeft:
-			g.movePlayer(DirectionLeft)
+			g.movePlayer(shared.Direction_LEFT)
 		case tcell.KeyRight:
-			g.movePlayer(DirectionRight)
+			g.movePlayer(shared.Direction_RIGHT)
 		case tcell.KeyUp:
-			g.movePlayer(DirectionUp)
+			g.movePlayer(shared.Direction_UP)
 		case tcell.KeyDown:
-			g.movePlayer(DirectionDown)
+			g.movePlayer(shared.Direction_DOWN)
 		}
 	}
 	return false
@@ -116,18 +133,18 @@ func (g *Game) handleEvent(event tcell.Event) bool {
 
 // movePlayer は自プレイヤーを指定方向に1マス移動させる。
 // マップ範囲外には出ないようにする。
-func (g *Game) movePlayer(direction Direction) {
+func (g *Game) movePlayer(direction shared.Direction) {
 	p := g.players[g.myPlayerID]
 
 	var dx, dy int
 	switch direction {
-	case DirectionLeft:
+	case shared.Direction_LEFT:
 		dx = -1
-	case DirectionRight:
+	case shared.Direction_RIGHT:
 		dx = 1
-	case DirectionUp:
+	case shared.Direction_UP:
 		dy = -1
-	case DirectionDown:
+	case shared.Direction_DOWN:
 		dy = 1
 	}
 
@@ -171,18 +188,18 @@ func (g *Game) draw() {
 	g.screen.Show()
 }
 
-var myPlayerRunes = map[Direction]rune{
-	DirectionUp:    '▲',
-	DirectionDown:  '▼',
-	DirectionLeft:  '◀',
-	DirectionRight: '▶',
+var myPlayerRunes = map[shared.Direction]rune{
+	shared.Direction_UP:    '▲',
+	shared.Direction_DOWN:  '▼',
+	shared.Direction_LEFT:  '◀',
+	shared.Direction_RIGHT: '▶',
 }
 
-var otherPlayerRunes = map[Direction]rune{
-	DirectionUp:    '^',
-	DirectionDown:  'v',
-	DirectionLeft:  '<',
-	DirectionRight: '>',
+var otherPlayerRunes = map[shared.Direction]rune{
+	shared.Direction_UP:    '^',
+	shared.Direction_DOWN:  'v',
+	shared.Direction_LEFT:  '<',
+	shared.Direction_RIGHT: '>',
 }
 
 func getPlayerRune(player Player, isMyPlayer bool) rune {
