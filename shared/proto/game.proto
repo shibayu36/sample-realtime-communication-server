@@ -17,6 +17,13 @@ message PlayerState {
   Direction direction = 4;
 }
 
+// 接続直後にサーバーがクライアントへ1度だけ送る初期化情報
+message Welcome {
+  PlayerState player = 1;
+  int32 map_width = 2;
+  int32 map_height = 3;
+}
+
 // アイテムの状態
 message ItemState {
   string item_id = 1;

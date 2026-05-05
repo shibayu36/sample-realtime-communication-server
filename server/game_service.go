@@ -28,12 +28,17 @@ func (s *GameService) OnConnected(client *Client) error {
 	s.broker.AddClient(client)
 	newPlayer := s.game.AddPlayer(game.PlayerID(client.ID()))
 
-	// IDや初期位置などを本人にwelcomeメッセージとして送信する
-	newPlayerStatePayload, err := proto.Marshal(toSharedPlayerState(newPlayer))
+	// IDや初期位置、マップサイズなどを本人にwelcomeメッセージとして送信する
+	newPlayerState := toSharedPlayerState(newPlayer)
+	welcomePayload, err := proto.Marshal(&shared.Welcome{
+		Player:    newPlayerState,
+		MapWidth:  int32(s.game.Width),
+		MapHeight: int32(s.game.Height),
+	})
 	if err != nil {
 		return fmt.Errorf("failed to marshal welcome: %w", err)
 	}
-	if err := s.broker.Send(client.ID(), protocol.MsgWelcome, newPlayerStatePayload); err != nil {
+	if err := s.broker.Send(client.ID(), protocol.MsgWelcome, welcomePayload); err != nil {
 		return fmt.Errorf("failed to send welcome: %w", err)
 	}
 
@@ -66,6 +71,10 @@ func (s *GameService) OnConnected(client *Client) error {
 	}
 
 	// 新規プレイヤーの参加を全クライアントに配信する
+	newPlayerStatePayload, err := proto.Marshal(newPlayerState)
+	if err != nil {
+		return fmt.Errorf("failed to marshal new player state: %w", err)
+	}
 	if err := s.broker.Broadcast(protocol.MsgPlayerState, newPlayerStatePayload); err != nil {
 		return fmt.Errorf("failed to broadcast new player state: %w", err)
 	}

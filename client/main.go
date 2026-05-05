@@ -67,7 +67,7 @@ func run() error {
 	}
 	defer conn.Close()
 
-	// サーバーがプレイヤーIDと初期位置を採番してwelcomeとして送ってくる。
+	// サーバーがwelcomeとして自プレイヤーのIDと初期位置、マップサイズなどの初期化情報を送ってくる。
 	// 自プレイヤーの初期化はwelcomeを受け取ってから行う。
 	welcome, err := protocol.ReadMessage(conn)
 	if err != nil {
@@ -76,17 +76,18 @@ func run() error {
 	if welcome.Type != protocol.MsgWelcome {
 		return fmt.Errorf("expected welcome message, got 0x%02x", welcome.Type)
 	}
-	welcomeState := &shared.PlayerState{}
-	if err := proto.Unmarshal(welcome.Payload, welcomeState); err != nil {
+	welcomeMsg := &shared.Welcome{}
+	if err := proto.Unmarshal(welcome.Payload, welcomeMsg); err != nil {
 		return fmt.Errorf("failed to unmarshal welcome: %w", err)
 	}
+	myPlayerState := welcomeMsg.GetPlayer()
 
 	game := &Game{
 		conn:       conn,
-		myPlayerID: welcomeState.GetPlayerId(),
+		myPlayerID: myPlayerState.GetPlayerId(),
 		screen:     screen,
-		width:      40,
-		height:     20,
+		width:      int(welcomeMsg.GetMapWidth()),
+		height:     int(welcomeMsg.GetMapHeight()),
 		players:    make(map[string]Player),
 		items:      make(map[string]Item),
 	}
@@ -94,11 +95,11 @@ func run() error {
 	game.players[game.myPlayerID] = Player{
 		ID: game.myPlayerID,
 		Position: Position{
-			X: int(welcomeState.GetPosition().GetX()),
-			Y: int(welcomeState.GetPosition().GetY()),
+			X: int(myPlayerState.GetPosition().GetX()),
+			Y: int(myPlayerState.GetPosition().GetY()),
 		},
-		Direction: welcomeState.GetDirection(),
-		Status:    welcomeState.GetStatus(),
+		Direction: myPlayerState.GetDirection(),
+		Status:    myPlayerState.GetStatus(),
 	}
 
 	// サーバーからのメッセージを別goroutineで受信し続ける

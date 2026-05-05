@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	// MsgWelcome は接続直後にサーバーがクライアントへ1度だけ送り、プレイヤーのIDや初期状態を通知する。
-	// payload: shared.PlayerState
+	// MsgWelcome は接続直後にサーバーがクライアントへ1度だけ送り、自プレイヤーのIDや初期状態、ゲームシステム情報を通知する。
+	// payload: shared.Welcome
 	MsgWelcome byte = 0x01
 	// MsgPlayerState はプレイヤーの状態を通知する。
 	// クライアントは自分の状態変化時にサーバーへ送信し、サーバーは全クライアントへ配信する（双方向）。
