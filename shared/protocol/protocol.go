@@ -21,8 +21,7 @@ const (
 	// payload: shared.ItemState
 	MsgItemState byte = 0x04
 
-	headerSize     = 5           // 1(type) + 4(length)
-	maxPayloadSize = 1024 * 1024 // 1MB上限
+	headerSize = 5 // 1(type) + 4(length)
 )
 
 // Message はワイヤー上の1メッセージを表す
@@ -57,10 +56,6 @@ func ReadMessage(r io.Reader) (Message, error) {
 
 	msgType := header[0]
 	length := binary.BigEndian.Uint32(header[1:])
-
-	if length > maxPayloadSize {
-		return Message{}, fmt.Errorf("payload too large: %d", length)
-	}
 
 	payload := make([]byte, length)
 	if _, err := io.ReadFull(r, payload); err != nil {
