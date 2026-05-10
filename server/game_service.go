@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"realtime-communication-server/server/game"
 	"realtime-communication-server/shared"
@@ -26,6 +27,7 @@ func NewGameService(broker *Broker, game *game.Game) *GameService {
 // OnConnected はプレイヤーをBrokerとGameに登録し、新規接続プレイヤーへwelcomeを送り、さらに既存のプレイヤーとアイテムの状態を送信する。
 // また、新規プレイヤーの存在を他クライアントへ通知する。
 func (s *GameService) OnConnected(client *Client) error {
+	slog.Info("client connected", "playerId", client.ID())
 	s.broker.AddClient(client)
 	newPlayer := s.game.AddPlayer(game.PlayerID(client.ID()))
 
@@ -97,6 +99,7 @@ func (s *GameService) OnMessage(client *Client, msg protocol.Message) error {
 
 // OnDisconnected はクライアントをBrokerとGameから削除し、切断を全員に通知する
 func (s *GameService) OnDisconnected(client *Client) error {
+	slog.Info("client disconnected", "playerId", client.ID())
 	s.broker.RemoveClient(client)
 	s.game.RemovePlayer(game.PlayerID(client.ID()))
 

@@ -8,8 +8,8 @@ import (
 
 // Broker は接続中の全クライアントを管理し、メッセージの配信を行う
 type Broker struct {
-	clients    map[string]*Client
-	clientsMux sync.RWMutex
+	clients map[string]*Client
+	mu      sync.RWMutex
 }
 
 func NewBroker() *Broker {
@@ -19,21 +19,21 @@ func NewBroker() *Broker {
 }
 
 func (b *Broker) AddClient(client *Client) {
-	b.clientsMux.Lock()
-	defer b.clientsMux.Unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.clients[client.ID()] = client
 }
 
 func (b *Broker) RemoveClient(client *Client) {
-	b.clientsMux.Lock()
-	defer b.clientsMux.Unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	delete(b.clients, client.ID())
 }
 
 // Broadcast はクライアント全員にメッセージを配信する
 func (b *Broker) Broadcast(msgType byte, payload []byte) error {
-	b.clientsMux.RLock()
-	defer b.clientsMux.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
 	errs := make([]error, 0, len(b.clients))
 	for _, client := range b.clients {
@@ -46,8 +46,8 @@ func (b *Broker) Broadcast(msgType byte, payload []byte) error {
 
 // Send は特定のクライアントにメッセージを送信する
 func (b *Broker) Send(clientID string, msgType byte, payload []byte) error {
-	b.clientsMux.RLock()
-	defer b.clientsMux.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
 	client, ok := b.clients[clientID]
 	if !ok {

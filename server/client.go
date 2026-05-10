@@ -10,9 +10,9 @@ import (
 
 // Client は接続中のクライアントを表す
 type Client struct {
-	id      string
-	conn    net.Conn
-	sendMux sync.Mutex
+	id   string
+	conn net.Conn
+	mu   sync.Mutex
 }
 
 func (c *Client) ID() string {
@@ -21,8 +21,8 @@ func (c *Client) ID() string {
 
 // Send はこのクライアントにメッセージを送信する
 func (c *Client) Send(msgType byte, payload []byte) error {
-	c.sendMux.Lock()
-	defer c.sendMux.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	err := protocol.WriteMessage(c.conn, protocol.Message{
 		Type:    msgType,
