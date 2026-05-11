@@ -140,6 +140,9 @@ func (s *GameService) onReceivePlayerState(client *Client, payload []byte) error
 		},
 		direction,
 	)
+	if updatedPlayer == nil {
+		return nil
+	}
 
 	broadcastPayload, err := proto.Marshal(toSharedPlayerState(updatedPlayer))
 	if err != nil {

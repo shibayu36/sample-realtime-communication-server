@@ -25,10 +25,8 @@ func run() error {
 
 	broker := NewBroker()
 	g := game.NewGame(40, 20) // 40x20のゲーム空間を作成
-
 	service := NewGameService(broker, g)
 
-	// GameServiceはServerのHandlerとして、クライアントからのメッセージをGameに反映
 	server, err := NewServer(":8080", service)
 	if err != nil {
 		return err
@@ -45,6 +43,5 @@ func run() error {
 
 	slog.Info("server started", "addr", ":8080")
 	server.Serve()
-
 	return nil
 }

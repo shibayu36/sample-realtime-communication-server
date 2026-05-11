@@ -317,8 +317,8 @@ type PlayerState struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
 	Position      *Position              `protobuf:"bytes,2,opt,name=position,proto3" json:"position,omitempty"`
-	Status        Status                 `protobuf:"varint,3,opt,name=status,proto3,enum=samplerealtimeserver.Status" json:"status,omitempty"`
-	Direction     Direction              `protobuf:"varint,4,opt,name=direction,proto3,enum=samplerealtimeserver.Direction" json:"direction,omitempty"`
+	Direction     Direction              `protobuf:"varint,3,opt,name=direction,proto3,enum=samplerealtimeserver.Direction" json:"direction,omitempty"`
+	Status        Status                 `protobuf:"varint,4,opt,name=status,proto3,enum=samplerealtimeserver.Status" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -367,18 +367,18 @@ func (x *PlayerState) GetPosition() *Position {
 	return nil
 }
 
-func (x *PlayerState) GetStatus() Status {
-	if x != nil {
-		return x.Status
-	}
-	return Status_ALIVE
-}
-
 func (x *PlayerState) GetDirection() Direction {
 	if x != nil {
 		return x.Direction
 	}
 	return Direction_UP
+}
+
+func (x *PlayerState) GetStatus() Status {
+	if x != nil {
+		return x.Status
+	}
+	return Status_ALIVE
 }
 
 // 接続直後にサーバーがクライアントへ1度だけ送る初期化情報
@@ -567,9 +567,9 @@ const file_game_proto_rawDesc = "" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\"\xdb\x01\n" +
 	"\vPlayerState\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12:\n" +
-	"\bposition\x18\x02 \x01(\v2\x1e.samplerealtimeserver.PositionR\bposition\x124\n" +
-	"\x06status\x18\x03 \x01(\x0e2\x1c.samplerealtimeserver.StatusR\x06status\x12=\n" +
-	"\tdirection\x18\x04 \x01(\x0e2\x1f.samplerealtimeserver.DirectionR\tdirection\"\x8b\x01\n" +
+	"\bposition\x18\x02 \x01(\v2\x1e.samplerealtimeserver.PositionR\bposition\x12=\n" +
+	"\tdirection\x18\x03 \x01(\x0e2\x1f.samplerealtimeserver.DirectionR\tdirection\x124\n" +
+	"\x06status\x18\x04 \x01(\x0e2\x1c.samplerealtimeserver.StatusR\x06status\"\x8b\x01\n" +
 	"\aWelcome\x12D\n" +
 	"\fplayer_state\x18\x01 \x01(\v2!.samplerealtimeserver.PlayerStateR\vplayerState\x12\x1b\n" +
 	"\tmap_width\x18\x02 \x01(\x05R\bmapWidth\x12\x1d\n" +
@@ -631,8 +631,8 @@ var file_game_proto_goTypes = []any{
 }
 var file_game_proto_depIdxs = []int32{
 	5, // 0: samplerealtimeserver.PlayerState.position:type_name -> samplerealtimeserver.Position
-	2, // 1: samplerealtimeserver.PlayerState.status:type_name -> samplerealtimeserver.Status
-	0, // 2: samplerealtimeserver.PlayerState.direction:type_name -> samplerealtimeserver.Direction
+	0, // 1: samplerealtimeserver.PlayerState.direction:type_name -> samplerealtimeserver.Direction
+	2, // 2: samplerealtimeserver.PlayerState.status:type_name -> samplerealtimeserver.Status
 	6, // 3: samplerealtimeserver.Welcome.player_state:type_name -> samplerealtimeserver.PlayerState
 	3, // 4: samplerealtimeserver.ItemState.type:type_name -> samplerealtimeserver.ItemType
 	5, // 5: samplerealtimeserver.ItemState.position:type_name -> samplerealtimeserver.Position
