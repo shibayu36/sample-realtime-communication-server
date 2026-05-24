@@ -74,6 +74,53 @@ func (Direction) EnumDescriptor() ([]byte, []int) {
 	return file_game_proto_rawDescGZIP(), []int{0}
 }
 
+// プレイヤーのステータス
+type Status int32
+
+const (
+	Status_ALIVE        Status = 0
+	Status_DISCONNECTED Status = 1 // サーバーから切断を通知するために使う
+)
+
+// Enum value maps for Status.
+var (
+	Status_name = map[int32]string{
+		0: "ALIVE",
+		1: "DISCONNECTED",
+	}
+	Status_value = map[string]int32{
+		"ALIVE":        0,
+		"DISCONNECTED": 1,
+	}
+)
+
+func (x Status) Enum() *Status {
+	p := new(Status)
+	*p = x
+	return p
+}
+
+func (x Status) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Status) Descriptor() protoreflect.EnumDescriptor {
+	return file_game_proto_enumTypes[1].Descriptor()
+}
+
+func (Status) Type() protoreflect.EnumType {
+	return &file_game_proto_enumTypes[1]
+}
+
+func (x Status) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Status.Descriptor instead.
+func (Status) EnumDescriptor() ([]byte, []int) {
+	return file_game_proto_rawDescGZIP(), []int{1}
+}
+
 // 位置情報
 type Position struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -133,6 +180,7 @@ type PlayerState struct {
 	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
 	Position      *Position              `protobuf:"bytes,2,opt,name=position,proto3" json:"position,omitempty"`
 	Direction     Direction              `protobuf:"varint,3,opt,name=direction,proto3,enum=samplerealtimeserver.Direction" json:"direction,omitempty"`
+	Status        Status                 `protobuf:"varint,4,opt,name=status,proto3,enum=samplerealtimeserver.Status" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -186,6 +234,13 @@ func (x *PlayerState) GetDirection() Direction {
 		return x.Direction
 	}
 	return Direction_UP
+}
+
+func (x *PlayerState) GetStatus() Status {
+	if x != nil {
+		return x.Status
+	}
+	return Status_ALIVE
 }
 
 // 接続直後にサーバーがクライアントへ1度だけ送る初期化情報
@@ -257,11 +312,12 @@ const file_game_proto_rawDesc = "" +
 	"game.proto\x12\x14samplerealtimeserver\"&\n" +
 	"\bPosition\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
-	"\x01y\x18\x02 \x01(\x05R\x01y\"\xa5\x01\n" +
+	"\x01y\x18\x02 \x01(\x05R\x01y\"\xdb\x01\n" +
 	"\vPlayerState\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12:\n" +
 	"\bposition\x18\x02 \x01(\v2\x1e.samplerealtimeserver.PositionR\bposition\x12=\n" +
-	"\tdirection\x18\x03 \x01(\x0e2\x1f.samplerealtimeserver.DirectionR\tdirection\"\x8b\x01\n" +
+	"\tdirection\x18\x03 \x01(\x0e2\x1f.samplerealtimeserver.DirectionR\tdirection\x124\n" +
+	"\x06status\x18\x04 \x01(\x0e2\x1c.samplerealtimeserver.StatusR\x06status\"\x8b\x01\n" +
 	"\aWelcome\x12D\n" +
 	"\fplayer_state\x18\x01 \x01(\v2!.samplerealtimeserver.PlayerStateR\vplayerState\x12\x1b\n" +
 	"\tmap_width\x18\x02 \x01(\x05R\bmapWidth\x12\x1d\n" +
@@ -271,7 +327,10 @@ const file_game_proto_rawDesc = "" +
 	"\x02UP\x10\x00\x12\b\n" +
 	"\x04DOWN\x10\x01\x12\b\n" +
 	"\x04LEFT\x10\x02\x12\t\n" +
-	"\x05RIGHT\x10\x03B&Z$realtime-communication-server/sharedb\x06proto3"
+	"\x05RIGHT\x10\x03*%\n" +
+	"\x06Status\x12\t\n" +
+	"\x05ALIVE\x10\x00\x12\x10\n" +
+	"\fDISCONNECTED\x10\x01B&Z$realtime-communication-server/sharedb\x06proto3"
 
 var (
 	file_game_proto_rawDescOnce sync.Once
@@ -285,23 +344,25 @@ func file_game_proto_rawDescGZIP() []byte {
 	return file_game_proto_rawDescData
 }
 
-var file_game_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_game_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_game_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_game_proto_goTypes = []any{
 	(Direction)(0),      // 0: samplerealtimeserver.Direction
-	(*Position)(nil),    // 1: samplerealtimeserver.Position
-	(*PlayerState)(nil), // 2: samplerealtimeserver.PlayerState
-	(*Welcome)(nil),     // 3: samplerealtimeserver.Welcome
+	(Status)(0),         // 1: samplerealtimeserver.Status
+	(*Position)(nil),    // 2: samplerealtimeserver.Position
+	(*PlayerState)(nil), // 3: samplerealtimeserver.PlayerState
+	(*Welcome)(nil),     // 4: samplerealtimeserver.Welcome
 }
 var file_game_proto_depIdxs = []int32{
-	1, // 0: samplerealtimeserver.PlayerState.position:type_name -> samplerealtimeserver.Position
+	2, // 0: samplerealtimeserver.PlayerState.position:type_name -> samplerealtimeserver.Position
 	0, // 1: samplerealtimeserver.PlayerState.direction:type_name -> samplerealtimeserver.Direction
-	2, // 2: samplerealtimeserver.Welcome.player_state:type_name -> samplerealtimeserver.PlayerState
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // 2: samplerealtimeserver.PlayerState.status:type_name -> samplerealtimeserver.Status
+	3, // 3: samplerealtimeserver.Welcome.player_state:type_name -> samplerealtimeserver.PlayerState
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_game_proto_init() }
@@ -314,7 +375,7 @@ func file_game_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_game_proto_rawDesc), len(file_game_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,

@@ -1,0 +1,32 @@
+package game
+
+import "sync"
+
+// Player はゲームに参加しているプレイヤーを表す
+type Player struct {
+	PlayerID PlayerID
+
+	position  Position
+	direction Direction
+
+	mu sync.RWMutex
+}
+
+func (p *Player) Position() Position {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.position
+}
+
+func (p *Player) Direction() Direction {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.direction
+}
+
+func (p *Player) Move(position Position, direction Direction) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.position = position
+	p.direction = direction
+}

@@ -22,6 +22,7 @@ message PlayerState {
   string player_id = 1;
   Position position = 2;
   Direction direction = 3;
+  Status status = 4;
 }
 
 // 接続直後にサーバーがクライアントへ1度だけ送る初期化情報
@@ -29,4 +30,10 @@ message Welcome {
   PlayerState player_state = 1;
   int32 map_width = 2;
   int32 map_height = 3;
+}
+
+// プレイヤーのステータス
+enum Status {
+  ALIVE = 0;
+  DISCONNECTED = 1; // サーバーから切断を通知するために使う
 }

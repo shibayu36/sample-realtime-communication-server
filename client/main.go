@@ -2,14 +2,12 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"time"
 
 	"github.com/gdamore/tcell/v3"
 	"github.com/gdamore/tcell/v3/color"
-	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 	"realtime-communication-server/shared"
 	"realtime-communication-server/shared/protocol"
@@ -26,6 +24,8 @@ type Position struct {
 }
 
 type Game struct {
+	conn net.Conn
+
 	screen tcell.Screen
 
 	width  int
@@ -75,6 +75,8 @@ func run() error {
 	myPlayerState := welcome.GetPlayerState()
 
 	game := &Game{
+		conn: conn,
+
 		screen: screen,
 
 		width:  int(welcome.GetMapWidth()),
@@ -91,13 +93,20 @@ func run() error {
 		Direction: myPlayerState.GetDirection(),
 	}
 
-	// 動かないダミープレイヤー。実装を進めるとサーバー経由の他プレイヤーに置き換わる
-	game.players[uuid.New().String()] = Player{
-		Position:  Position{X: rand.Intn(game.width), Y: rand.Intn(game.height)},
-		Direction: shared.Direction_DOWN,
-	}
+	// サーバーからのメッセージを別goroutineで受信し続ける
+	messageChan := make(chan protocol.Message)
+	go func() {
+		for {
+			msg, err := protocol.ReadMessage(conn)
+			if err != nil {
+				close(messageChan)
+				return
+			}
+			messageChan <- msg
+		}
+	}()
 
-	// メインループ: キー入力と描画タイマーの2つを処理する
+	// メインループ: キー入力・サーバーメッセージ・描画タイマーの3つのイベントを処理する
 	ticker := time.NewTicker(time.Second / 60)
 	for {
 		select {
@@ -105,8 +114,63 @@ func run() error {
 			if game.handleEvent(event) {
 				return nil
 			}
+		case msg, ok := <-messageChan:
+			if !ok {
+				return fmt.Errorf("server connection closed")
+			}
+			game.handleMessage(msg)
 		case <-ticker.C:
 			game.draw()
+		}
+	}
+}
+
+// publishMyState は自分のプレイヤー状態をサーバーに送信する。
+// サーバーはこの状態を受け取り、他の全クライアントに配信する。
+func (g *Game) publishMyState() {
+	myPlayer := g.getMyPlayer()
+
+	state := &shared.PlayerState{
+		PlayerId: g.myPlayerID,
+		Position: &shared.Position{
+			X: int32(myPlayer.Position.X),
+			Y: int32(myPlayer.Position.Y),
+		},
+		Direction: myPlayer.Direction,
+	}
+
+	data, err := proto.Marshal(state)
+	if err != nil {
+		return
+	}
+
+	protocol.WriteMessage(g.conn, protocol.Message{
+		Type:    protocol.MsgPlayerState,
+		Payload: data,
+	})
+}
+
+// handleMessage はサーバーから受信したメッセージを処理する。
+// 他プレイヤーの状態変化（移動・切断）を players map に反映する。
+func (g *Game) handleMessage(msg protocol.Message) {
+	switch msg.Type {
+	case protocol.MsgPlayerState:
+		playerState := &shared.PlayerState{}
+		if err := proto.Unmarshal(msg.Payload, playerState); err != nil {
+			return
+		}
+
+		if playerState.GetStatus() == shared.Status_DISCONNECTED {
+			delete(g.players, playerState.GetPlayerId())
+			return
+		}
+
+		g.players[playerState.GetPlayerId()] = Player{
+			Position: Position{
+				X: int(playerState.GetPosition().GetX()),
+				Y: int(playerState.GetPosition().GetY()),
+			},
+			Direction: playerState.GetDirection(),
 		}
 	}
 }
@@ -131,10 +195,11 @@ func (g *Game) handleEvent(event tcell.Event) bool {
 	return false
 }
 
-// movePlayer は自プレイヤーを指定方向に1マス移動させる。
-// マップ範囲外には出ないようにする。
+// movePlayer は自プレイヤーを指定方向に移動させ、変更があればサーバーに送信する。
 func (g *Game) movePlayer(direction shared.Direction) {
-	p := g.players[g.myPlayerID]
+	myPlayer := g.getMyPlayer()
+	oldX, oldY := myPlayer.Position.X, myPlayer.Position.Y
+	oldDirection := myPlayer.Direction
 
 	var dx, dy int
 	switch direction {
@@ -148,15 +213,24 @@ func (g *Game) movePlayer(direction shared.Direction) {
 		dy = 1
 	}
 
-	if newX := p.Position.X + dx; newX >= 0 && newX < g.width {
-		p.Position.X = newX
+	if newX := myPlayer.Position.X + dx; newX >= 0 && newX < g.width {
+		myPlayer.Position.X = newX
 	}
-	if newY := p.Position.Y + dy; newY >= 0 && newY < g.height {
-		p.Position.Y = newY
+	if newY := myPlayer.Position.Y + dy; newY >= 0 && newY < g.height {
+		myPlayer.Position.Y = newY
 	}
-	p.Direction = direction
+	myPlayer.Direction = direction
 
-	g.players[g.myPlayerID] = p
+	g.players[g.myPlayerID] = myPlayer
+
+	// 位置か方向が変更された場合のみサーバーに送信する
+	if oldX != myPlayer.Position.X || oldY != myPlayer.Position.Y || oldDirection != direction {
+		g.publishMyState()
+	}
+}
+
+func (g *Game) getMyPlayer() Player {
+	return g.players[g.myPlayerID]
 }
 
 // draw はゲーム画面を描画する。
