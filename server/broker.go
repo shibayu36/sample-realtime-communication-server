@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 )
@@ -27,6 +28,20 @@ func (b *Broker) RemoveClient(client *Client) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	delete(b.clients, client.ID())
+}
+
+// Broadcast はクライアント全員にメッセージを配信する
+func (b *Broker) Broadcast(msgType byte, payload []byte) error {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	errs := make([]error, 0, len(b.clients))
+	for _, client := range b.clients {
+		if err := client.Send(msgType, payload); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // Send は特定のクライアントにメッセージを送信する
