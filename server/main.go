@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"realtime-communication-server/server/game"
 )
 
 func main() {
@@ -22,7 +24,8 @@ func run() error {
 	defer cancel()
 
 	broker := NewBroker()
-	service := NewGameService(broker)
+	g := game.NewGame(40, 20) // 40x20のゲーム空間を作成
+	service := NewGameService(broker, g)
 
 	server, err := NewServer(":8080", service)
 	if err != nil {
