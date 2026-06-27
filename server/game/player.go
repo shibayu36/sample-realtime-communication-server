@@ -30,3 +30,11 @@ func (p *Player) Move(position Position, direction Direction) {
 	p.position = position
 	p.direction = direction
 }
+
+// プレイヤーの前方の位置を取得する
+func (p *Player) FowardPosition() Position {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	dx, dy := p.direction.ToVector()
+	return Position{X: p.position.X + dx, Y: p.position.Y + dy}
+}

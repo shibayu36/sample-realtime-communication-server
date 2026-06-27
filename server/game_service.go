@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -59,6 +60,17 @@ func (s *GameService) OnConnected(client *Client) error {
 		}
 	}
 
+	// 現在のアイテムの状態をそのクライアントに送信する
+	for _, item := range s.game.GetItems() {
+		payload, err := proto.Marshal(toActiveSharedItemState(item))
+		if err != nil {
+			return fmt.Errorf("failed to marshal item state: %w", err)
+		}
+		if err := s.broker.Send(client.ID(), protocol.MsgItemState, payload); err != nil {
+			return fmt.Errorf("failed to send item state: %w", err)
+		}
+	}
+
 	// 新規プレイヤーの参加を全クライアントに配信する
 	newPlayerStatePayload, err := proto.Marshal(newPlayerState)
 	if err != nil {
@@ -76,6 +88,8 @@ func (s *GameService) OnMessage(client *Client, msg protocol.Message) error {
 	switch msg.Type {
 	case protocol.MsgPlayerState:
 		return s.onReceivePlayerState(client, msg.Payload)
+	case protocol.MsgPlayerAction:
+		return s.onReceivePlayerAction(client, msg.Payload)
 	default:
 		return fmt.Errorf("unknown message type: 0x%02x", msg.Type)
 	}
@@ -123,6 +137,24 @@ func (s *GameService) onReceivePlayerState(client *Client, payload []byte) error
 	return nil
 }
 
+// onReceivePlayerAction はクライアントからのアクションを処理する（弾の発射など）
+func (s *GameService) onReceivePlayerAction(client *Client, payload []byte) error {
+	playerID := game.PlayerID(client.ID())
+
+	playerActionRequest := &shared.PlayerActionRequest{}
+	if err := proto.Unmarshal(payload, playerActionRequest); err != nil {
+		return fmt.Errorf("failed to unmarshal player action request: %w", err)
+	}
+
+	switch playerActionRequest.GetType() {
+	case shared.ActionType_SHOOT_BULLET:
+		bulletID := s.game.ShootBullet(playerID)
+		slog.Info("received shoot action", "playerId", client.ID(), "bulletId", bulletID)
+	}
+
+	return nil
+}
+
 // OnDisconnected はクライアントをBrokerとGameから削除し、切断を全員に通知する
 func (s *GameService) OnDisconnected(client *Client) error {
 	slog.Info("client disconnected", "playerId", client.ID())
@@ -142,6 +174,78 @@ func (s *GameService) OnDisconnected(client *Client) error {
 	}
 
 	return nil
+}
+
+// StartPublishLoop はゲームループで更新された状態を検知し、クライアントに配信するループを開始する
+func (s *GameService) StartPublishLoop(ctx context.Context, updatedCh <-chan struct{}) {
+	go func() {
+		for {
+			select {
+			case _, ok := <-updatedCh:
+				if !ok {
+					return
+				}
+				s.publishItemStates()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+// publishItemStates は全アイテムの現在の状態をクライアントに配信する
+func (s *GameService) publishItemStates() {
+	items := s.game.GetItems()
+	removedItems := s.game.GetRemovedItems()
+	slog.Info("publishing item states", "active", len(items), "removed", len(removedItems))
+
+	// マップ上のアイテムの現在の状態を配信する
+	for _, item := range items {
+		payload, err := proto.Marshal(toActiveSharedItemState(item))
+		if err != nil {
+			continue
+		}
+		s.broker.Broadcast(protocol.MsgItemState, payload)
+	}
+
+	// アイテムが消えたことをREMOVEDとして配信する
+	for _, removedItem := range removedItems {
+		itemState := &shared.ItemState{
+			ItemId: string(removedItem.ID()),
+			Status: shared.ItemStatus_REMOVED,
+		}
+
+		payload, err := proto.Marshal(itemState)
+		if err != nil {
+			continue
+		}
+		if err := s.broker.Broadcast(protocol.MsgItemState, payload); err != nil {
+			continue
+		}
+
+		// Broadcastが成功したら削除アイテムは不要になる
+		s.game.ClearRemovedItem(removedItem.ID())
+	}
+}
+
+func toActiveSharedItemState(item game.Item) *shared.ItemState {
+	var itemType shared.ItemType
+	switch item.Type() {
+	case game.ItemTypeBullet:
+		itemType = shared.ItemType_BULLET
+	default:
+		panic(fmt.Sprintf("invalid item type: %s", item.Type()))
+	}
+
+	return &shared.ItemState{
+		ItemId: string(item.ID()),
+		Type:   itemType,
+		Position: &shared.Position{
+			X: int32(item.Position().X),
+			Y: int32(item.Position().Y),
+		},
+		Status: shared.ItemStatus_ACTIVE,
+	}
 }
 
 func toSharedPlayerState(player *game.Player) *shared.PlayerState {
