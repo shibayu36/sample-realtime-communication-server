@@ -1,29 +1,104 @@
 package game
 
 import (
+	"context"
 	"math/rand"
 	"sync"
+	"time"
 
 	"realtime-communication-server/shared"
+
+	"github.com/google/uuid"
 )
 
 // Game はサーバー側で保持するゲーム空間の状態を管理する。
-// プレイヤーの状態管理を担う。
+// プレイヤー・アイテムの状態管理、ゲームループによる更新を担う。
 type Game struct {
 	Width  int
 	Height int
 
 	Players map[PlayerID]*Player
+	Items   map[ItemID]Item
+
+	// 新しく追加されたアイテムを管理する。1tickごとにFlushされる
+	AddedItems map[ItemID]Item
+
+	// 削除されたアイテムを管理する
+	RemovedItems map[ItemID]Item
 
 	mu sync.RWMutex
 }
 
 func NewGame(width, height int) *Game {
 	return &Game{
-		Width:   width,
-		Height:  height,
-		Players: make(map[PlayerID]*Player),
+		Width:        width,
+		Height:       height,
+		Players:      make(map[PlayerID]*Player),
+		Items:        make(map[ItemID]Item),
+		AddedItems:   make(map[ItemID]Item),
+		RemovedItems: make(map[ItemID]Item),
 	}
+}
+
+// StartUpdateLoop はゲーム状態を更新するループを開始する。
+// 状態が更新されたことを通知するチャネルを返す。
+func (g *Game) StartUpdateLoop(ctx context.Context) <-chan struct{} {
+	updatedCh := make(chan struct{})
+
+	go func() {
+		defer close(updatedCh)
+
+		ticker := time.NewTicker(16700 * time.Microsecond) // 16.7ms ≈ 60fps
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				g.update(updatedCh)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return updatedCh
+}
+
+// update は1tickごとのゲーム状態更新を行う。状態が変化したらupdatedChに通知する。
+func (g *Game) update(updatedCh chan<- struct{}) {
+	items := g.GetItems()
+
+	updatedItems := []Item{}
+
+	// 各アイテムを1tick進める
+	for _, item := range items {
+		if item.Update() {
+			updatedItems = append(updatedItems, item)
+		}
+	}
+	// 更新によって盤面外に出たアイテムを削除する
+	for _, updatedItem := range updatedItems {
+		if !g.isWithinBounds(updatedItem) {
+			g.RemoveItem(updatedItem.ID())
+		}
+	}
+
+	// このtick中に追加されたアイテムを取り込む
+	g.mu.Lock()
+	for _, item := range g.AddedItems {
+		updatedItems = append(updatedItems, item)
+	}
+	g.AddedItems = make(map[ItemID]Item)
+	g.mu.Unlock()
+
+	if len(updatedItems) > 0 {
+		updatedCh <- struct{}{}
+	}
+}
+
+// アイテムが盤面内にあるかどうかを判定する
+func (g *Game) isWithinBounds(item Item) bool {
+	pos := item.Position()
+	return pos.X >= 0 && pos.X < g.Width && pos.Y >= 0 && pos.Y < g.Height
 }
 
 // AddPlayer は新規プレイヤーをランダムな初期位置で追加し、追加されたプレイヤーを返す。
@@ -61,4 +136,61 @@ func (g *Game) GetPlayers() map[PlayerID]*Player {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return shared.CopyMap(g.Players)
+}
+
+// ShootBullet はプレイヤーの前方に弾を生成する。弾の移動はゲームループが管理する。
+func (g *Game) ShootBullet(playerID PlayerID) ItemID {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	player, ok := g.Players[playerID]
+	if !ok {
+		return ItemID("")
+	}
+
+	// プレイヤーの前方に発射する
+	position := player.FowardPosition()
+	direction := player.Direction()
+
+	bullet := NewBullet(ItemID(uuid.New().String()), position, direction)
+	g.addItemWithoutLock(bullet)
+
+	return bullet.ID()
+}
+
+// アイテム追加をLockなしで行う内部メソッド
+func (g *Game) addItemWithoutLock(item Item) {
+	if g.isWithinBounds(item) {
+		g.Items[item.ID()] = item
+		g.AddedItems[item.ID()] = item
+	}
+}
+
+func (g *Game) GetItems() map[ItemID]Item {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return shared.CopyMap(g.Items)
+}
+
+func (g *Game) GetRemovedItems() map[ItemID]Item {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return shared.CopyMap(g.RemovedItems)
+}
+
+func (g *Game) ClearRemovedItem(itemID ItemID) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	delete(g.RemovedItems, itemID)
+}
+
+func (g *Game) RemoveItem(itemID ItemID) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	item, ok := g.Items[itemID]
+	if !ok {
+		return
+	}
+	delete(g.Items, itemID)
+	g.RemovedItems[itemID] = item
 }
