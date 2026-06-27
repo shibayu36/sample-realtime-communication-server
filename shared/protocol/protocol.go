@@ -14,6 +14,12 @@ const (
 	// クライアントは自分の状態変化時にサーバーへ送信し、サーバーは全クライアントへ配信する（双方向）。
 	// payload: shared.PlayerState
 	MsgPlayerState byte = 0x02
+	// MsgPlayerAction はクライアントからサーバーへ弾発射などのアクションを要求する。
+	// payload: shared.PlayerActionRequest
+	MsgPlayerAction byte = 0x03
+	// MsgItemState はアイテム（弾など）の状態をサーバーから全クライアントへ配信する。
+	// payload: shared.ItemState
+	MsgItemState byte = 0x04
 
 	headerSize = 5 // 1(type) + 4(length)
 )

@@ -27,6 +27,10 @@ func run() error {
 	g := game.NewGame(40, 20) // 40x20のゲーム空間を作成
 	service := NewGameService(broker, g)
 
+	// ゲームループが更新を検知し、配信ループがそれを全クライアントへ送る
+	updatedCh := g.StartUpdateLoop(ctx)
+	service.StartPublishLoop(ctx, updatedCh)
+
 	server, err := NewServer(":8080", service)
 	if err != nil {
 		return err

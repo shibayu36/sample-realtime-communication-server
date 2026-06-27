@@ -23,6 +23,12 @@ type Position struct {
 	Y int
 }
 
+type Item struct {
+	ID       string
+	Type     shared.ItemType
+	Position Position
+}
+
 type Game struct {
 	conn net.Conn
 
@@ -33,6 +39,7 @@ type Game struct {
 
 	myPlayerID string
 	players    map[string]Player
+	items      map[string]Item
 }
 
 func main() {
@@ -84,6 +91,7 @@ func run() error {
 
 		myPlayerID: myPlayerState.GetPlayerId(),
 		players:    make(map[string]Player),
+		items:      make(map[string]Item),
 	}
 	game.players[game.myPlayerID] = Player{
 		Position: Position{
@@ -172,6 +180,26 @@ func (g *Game) handleMessage(msg protocol.Message) {
 			},
 			Direction: playerState.GetDirection(),
 		}
+	case protocol.MsgItemState:
+		// 弾などのアイテム状態が配信されてくる（アイテムの移動や状態はサーバーが計算する）
+		itemState := &shared.ItemState{}
+		if err := proto.Unmarshal(msg.Payload, itemState); err != nil {
+			return
+		}
+
+		if itemState.GetStatus() == shared.ItemStatus_REMOVED {
+			delete(g.items, itemState.GetItemId())
+			return
+		}
+
+		g.items[itemState.GetItemId()] = Item{
+			ID:   itemState.GetItemId(),
+			Type: itemState.GetType(),
+			Position: Position{
+				X: int(itemState.GetPosition().GetX()),
+				Y: int(itemState.GetPosition().GetY()),
+			},
+		}
 	}
 }
 
@@ -190,6 +218,10 @@ func (g *Game) handleEvent(event tcell.Event) bool {
 			g.movePlayer(shared.Direction_UP)
 		case tcell.KeyDown:
 			g.movePlayer(shared.Direction_DOWN)
+		case tcell.KeyRune:
+			if ev.Str() == " " {
+				g.shootBullet()
+			}
 		}
 	}
 	return false
@@ -229,6 +261,25 @@ func (g *Game) movePlayer(direction shared.Direction) {
 	}
 }
 
+// shootBullet は弾発射アクションをサーバーに送信する。
+// クライアントは「撃ちたい」というリクエストを送るだけで、
+// 弾の生成や移動計算はサーバーが行う。
+func (g *Game) shootBullet() {
+	req := &shared.PlayerActionRequest{
+		Type: shared.ActionType_SHOOT_BULLET,
+	}
+
+	data, err := proto.Marshal(req)
+	if err != nil {
+		return
+	}
+
+	protocol.WriteMessage(g.conn, protocol.Message{
+		Type:    protocol.MsgPlayerAction,
+		Payload: data,
+	})
+}
+
 func (g *Game) getMyPlayer() Player {
 	return g.players[g.myPlayerID]
 }
@@ -257,6 +308,22 @@ func (g *Game) draw() {
 			nil,
 			style,
 		)
+	}
+
+	// アイテムを描画
+	for _, item := range g.items {
+		switch item.Type {
+		case shared.ItemType_BULLET:
+			g.screen.SetContent(
+				item.Position.X,
+				item.Position.Y,
+				'*',
+				nil,
+				style,
+			)
+		default:
+			// 知らないアイテムは描画しない
+		}
 	}
 
 	g.screen.Show()
