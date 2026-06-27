@@ -166,7 +166,8 @@ func (s *GameService) onReceivePlayerAction(client *Client, payload []byte) erro
 
 	switch playerActionRequest.GetType() {
 	case shared.ActionType_SHOOT_BULLET:
-		s.game.ShootBullet(playerID)
+		bulletID := s.game.ShootBullet(playerID)
+		slog.Info("received shoot action", "playerId", client.ID(), "bulletId", bulletID)
 	}
 
 	return nil
@@ -200,8 +201,12 @@ func (s *GameService) publishStates(updatedResult game.UpdatedResult) {
 
 // publishItemStates は全アイテムの現在の状態をクライアントに配信する
 func (s *GameService) publishItemStates() {
+	items := s.game.GetItems()
+	removedItems := s.game.GetRemovedItems()
+	slog.Info("publishing item states", "active", len(items), "removed", len(removedItems))
+
 	// Activeなアイテムを送信する
-	for _, item := range s.game.GetItems() {
+	for _, item := range items {
 		payload, err := proto.Marshal(toActiveSharedItemState(item))
 		if err != nil {
 			continue
@@ -210,7 +215,7 @@ func (s *GameService) publishItemStates() {
 	}
 
 	// 削除されたアイテムを送信する
-	for _, removedItem := range s.game.GetRemovedItems() {
+	for _, removedItem := range removedItems {
 		itemState := &shared.ItemState{
 			ItemId: string(removedItem.ID()),
 			Status: shared.ItemStatus_REMOVED,
