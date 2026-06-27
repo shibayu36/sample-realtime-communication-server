@@ -95,7 +95,7 @@ func (g *Game) update(updatedCh chan<- UpdatedResult) {
 			updatedItems = append(updatedItems, item)
 		}
 	}
-	// 盤面外に出たアイテムを削除する
+	// 更新によって盤面外に出たアイテムを削除する
 	for _, updatedItem := range updatedItems {
 		if !g.isWithinBounds(updatedItem) {
 			g.RemoveItem(updatedItem.ID())

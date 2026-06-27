@@ -32,30 +32,11 @@ message Welcome {
   int32 map_height = 3;
 }
 
-// アイテムの状態
-message ItemState {
-  string item_id = 1;
-  ItemType type = 2;
-  Position position = 3;
-  ItemStatus status = 4;
-}
-
-// アイテムのステータス
-enum ItemStatus {
-  ACTIVE = 0;
-  REMOVED = 1; // クライアントにアイテムの削除を通知するために使う
-}
-
 // プレイヤーのステータス
 enum Status {
   ALIVE = 0;
   DISCONNECTED = 1; // サーバーから切断を通知するために使う
   DEAD = 2;         // 弾に当たって死亡
-}
-
-// アイテムの種類
-enum ItemType {
-  BULLET = 0;
 }
 
 // プレイヤーからのアクション
@@ -66,4 +47,23 @@ message PlayerActionRequest {
 // プレイヤーからのアクションの種類
 enum ActionType {
   SHOOT_BULLET = 0; // 弾の発射
+}
+
+// アイテムの状態
+message ItemState {
+  string item_id = 1;
+  ItemType type = 2;
+  Position position = 3;
+  ItemStatus status = 4;
+}
+
+// アイテムの種類
+enum ItemType {
+  BULLET = 0;
+}
+
+// アイテムのステータス
+enum ItemStatus {
+  ACTIVE = 0;
+  REMOVED = 1; // クライアントにアイテムの削除を通知するために使う
 }

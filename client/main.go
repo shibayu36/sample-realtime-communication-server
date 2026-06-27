@@ -189,7 +189,7 @@ func (g *Game) handleMessage(msg protocol.Message) {
 			Status:    playerState.GetStatus(),
 		}
 	case protocol.MsgItemState:
-		// 弾などのアイテム状態が配信されてくる（アイテムの移動はサーバーが計算する）
+		// 弾などのアイテム状態が配信されてくる（アイテムの移動や状態はサーバーが計算する）
 		itemState := &shared.ItemState{}
 		if err := proto.Unmarshal(msg.Payload, itemState); err != nil {
 			return
@@ -317,13 +317,18 @@ func (g *Game) draw() {
 
 	// アイテムを描画
 	for _, item := range g.items {
-		g.screen.SetContent(
-			item.Position.X,
-			item.Position.Y,
-			'*',
-			nil,
-			style,
-		)
+		switch item.Type {
+		case shared.ItemType_BULLET:
+			g.screen.SetContent(
+				item.Position.X,
+				item.Position.Y,
+				'*',
+				nil,
+				style,
+			)
+		default:
+			// 知らないアイテムは描画しない
+		}
 	}
 
 	g.screen.Show()

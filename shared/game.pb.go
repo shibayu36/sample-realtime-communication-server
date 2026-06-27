@@ -74,53 +74,6 @@ func (Direction) EnumDescriptor() ([]byte, []int) {
 	return file_game_proto_rawDescGZIP(), []int{0}
 }
 
-// アイテムのステータス
-type ItemStatus int32
-
-const (
-	ItemStatus_ACTIVE  ItemStatus = 0
-	ItemStatus_REMOVED ItemStatus = 1 // クライアントにアイテムの削除を通知するために使う
-)
-
-// Enum value maps for ItemStatus.
-var (
-	ItemStatus_name = map[int32]string{
-		0: "ACTIVE",
-		1: "REMOVED",
-	}
-	ItemStatus_value = map[string]int32{
-		"ACTIVE":  0,
-		"REMOVED": 1,
-	}
-)
-
-func (x ItemStatus) Enum() *ItemStatus {
-	p := new(ItemStatus)
-	*p = x
-	return p
-}
-
-func (x ItemStatus) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ItemStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_game_proto_enumTypes[1].Descriptor()
-}
-
-func (ItemStatus) Type() protoreflect.EnumType {
-	return &file_game_proto_enumTypes[1]
-}
-
-func (x ItemStatus) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ItemStatus.Descriptor instead.
-func (ItemStatus) EnumDescriptor() ([]byte, []int) {
-	return file_game_proto_rawDescGZIP(), []int{1}
-}
-
 // プレイヤーのステータス
 type Status int32
 
@@ -155,11 +108,11 @@ func (x Status) String() string {
 }
 
 func (Status) Descriptor() protoreflect.EnumDescriptor {
-	return file_game_proto_enumTypes[2].Descriptor()
+	return file_game_proto_enumTypes[1].Descriptor()
 }
 
 func (Status) Type() protoreflect.EnumType {
-	return &file_game_proto_enumTypes[2]
+	return &file_game_proto_enumTypes[1]
 }
 
 func (x Status) Number() protoreflect.EnumNumber {
@@ -168,6 +121,50 @@ func (x Status) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Status.Descriptor instead.
 func (Status) EnumDescriptor() ([]byte, []int) {
+	return file_game_proto_rawDescGZIP(), []int{1}
+}
+
+// プレイヤーからのアクションの種類
+type ActionType int32
+
+const (
+	ActionType_SHOOT_BULLET ActionType = 0 // 弾の発射
+)
+
+// Enum value maps for ActionType.
+var (
+	ActionType_name = map[int32]string{
+		0: "SHOOT_BULLET",
+	}
+	ActionType_value = map[string]int32{
+		"SHOOT_BULLET": 0,
+	}
+)
+
+func (x ActionType) Enum() *ActionType {
+	p := new(ActionType)
+	*p = x
+	return p
+}
+
+func (x ActionType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ActionType) Descriptor() protoreflect.EnumDescriptor {
+	return file_game_proto_enumTypes[2].Descriptor()
+}
+
+func (ActionType) Type() protoreflect.EnumType {
+	return &file_game_proto_enumTypes[2]
+}
+
+func (x ActionType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ActionType.Descriptor instead.
+func (ActionType) EnumDescriptor() ([]byte, []int) {
 	return file_game_proto_rawDescGZIP(), []int{2}
 }
 
@@ -215,47 +212,50 @@ func (ItemType) EnumDescriptor() ([]byte, []int) {
 	return file_game_proto_rawDescGZIP(), []int{3}
 }
 
-// プレイヤーからのアクションの種類
-type ActionType int32
+// アイテムのステータス
+type ItemStatus int32
 
 const (
-	ActionType_SHOOT_BULLET ActionType = 0 // 弾の発射
+	ItemStatus_ACTIVE  ItemStatus = 0
+	ItemStatus_REMOVED ItemStatus = 1 // クライアントにアイテムの削除を通知するために使う
 )
 
-// Enum value maps for ActionType.
+// Enum value maps for ItemStatus.
 var (
-	ActionType_name = map[int32]string{
-		0: "SHOOT_BULLET",
+	ItemStatus_name = map[int32]string{
+		0: "ACTIVE",
+		1: "REMOVED",
 	}
-	ActionType_value = map[string]int32{
-		"SHOOT_BULLET": 0,
+	ItemStatus_value = map[string]int32{
+		"ACTIVE":  0,
+		"REMOVED": 1,
 	}
 )
 
-func (x ActionType) Enum() *ActionType {
-	p := new(ActionType)
+func (x ItemStatus) Enum() *ItemStatus {
+	p := new(ItemStatus)
 	*p = x
 	return p
 }
 
-func (x ActionType) String() string {
+func (x ItemStatus) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (ActionType) Descriptor() protoreflect.EnumDescriptor {
+func (ItemStatus) Descriptor() protoreflect.EnumDescriptor {
 	return file_game_proto_enumTypes[4].Descriptor()
 }
 
-func (ActionType) Type() protoreflect.EnumType {
+func (ItemStatus) Type() protoreflect.EnumType {
 	return &file_game_proto_enumTypes[4]
 }
 
-func (x ActionType) Number() protoreflect.EnumNumber {
+func (x ItemStatus) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ActionType.Descriptor instead.
-func (ActionType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use ItemStatus.Descriptor instead.
+func (ItemStatus) EnumDescriptor() ([]byte, []int) {
 	return file_game_proto_rawDescGZIP(), []int{4}
 }
 
@@ -442,6 +442,51 @@ func (x *Welcome) GetMapHeight() int32 {
 	return 0
 }
 
+// プレイヤーからのアクション
+type PlayerActionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          ActionType             `protobuf:"varint,1,opt,name=type,proto3,enum=samplerealtimeserver.ActionType" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlayerActionRequest) Reset() {
+	*x = PlayerActionRequest{}
+	mi := &file_game_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlayerActionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlayerActionRequest) ProtoMessage() {}
+
+func (x *PlayerActionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_game_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlayerActionRequest.ProtoReflect.Descriptor instead.
+func (*PlayerActionRequest) Descriptor() ([]byte, []int) {
+	return file_game_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PlayerActionRequest) GetType() ActionType {
+	if x != nil {
+		return x.Type
+	}
+	return ActionType_SHOOT_BULLET
+}
+
 // アイテムの状態
 type ItemState struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -455,7 +500,7 @@ type ItemState struct {
 
 func (x *ItemState) Reset() {
 	*x = ItemState{}
-	mi := &file_game_proto_msgTypes[3]
+	mi := &file_game_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -467,7 +512,7 @@ func (x *ItemState) String() string {
 func (*ItemState) ProtoMessage() {}
 
 func (x *ItemState) ProtoReflect() protoreflect.Message {
-	mi := &file_game_proto_msgTypes[3]
+	mi := &file_game_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -480,7 +525,7 @@ func (x *ItemState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemState.ProtoReflect.Descriptor instead.
 func (*ItemState) Descriptor() ([]byte, []int) {
-	return file_game_proto_rawDescGZIP(), []int{3}
+	return file_game_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ItemState) GetItemId() string {
@@ -511,51 +556,6 @@ func (x *ItemState) GetStatus() ItemStatus {
 	return ItemStatus_ACTIVE
 }
 
-// プレイヤーからのアクション
-type PlayerActionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          ActionType             `protobuf:"varint,1,opt,name=type,proto3,enum=samplerealtimeserver.ActionType" json:"type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PlayerActionRequest) Reset() {
-	*x = PlayerActionRequest{}
-	mi := &file_game_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PlayerActionRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PlayerActionRequest) ProtoMessage() {}
-
-func (x *PlayerActionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_game_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PlayerActionRequest.ProtoReflect.Descriptor instead.
-func (*PlayerActionRequest) Descriptor() ([]byte, []int) {
-	return file_game_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *PlayerActionRequest) GetType() ActionType {
-	if x != nil {
-		return x.Type
-	}
-	return ActionType_SHOOT_BULLET
-}
-
 var File_game_proto protoreflect.FileDescriptor
 
 const file_game_proto_rawDesc = "" +
@@ -574,34 +574,34 @@ const file_game_proto_rawDesc = "" +
 	"\fplayer_state\x18\x01 \x01(\v2!.samplerealtimeserver.PlayerStateR\vplayerState\x12\x1b\n" +
 	"\tmap_width\x18\x02 \x01(\x05R\bmapWidth\x12\x1d\n" +
 	"\n" +
-	"map_height\x18\x03 \x01(\x05R\tmapHeight\"\xce\x01\n" +
+	"map_height\x18\x03 \x01(\x05R\tmapHeight\"K\n" +
+	"\x13PlayerActionRequest\x124\n" +
+	"\x04type\x18\x01 \x01(\x0e2 .samplerealtimeserver.ActionTypeR\x04type\"\xce\x01\n" +
 	"\tItemState\x12\x17\n" +
 	"\aitem_id\x18\x01 \x01(\tR\x06itemId\x122\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1e.samplerealtimeserver.ItemTypeR\x04type\x12:\n" +
 	"\bposition\x18\x03 \x01(\v2\x1e.samplerealtimeserver.PositionR\bposition\x128\n" +
-	"\x06status\x18\x04 \x01(\x0e2 .samplerealtimeserver.ItemStatusR\x06status\"K\n" +
-	"\x13PlayerActionRequest\x124\n" +
-	"\x04type\x18\x01 \x01(\x0e2 .samplerealtimeserver.ActionTypeR\x04type*2\n" +
+	"\x06status\x18\x04 \x01(\x0e2 .samplerealtimeserver.ItemStatusR\x06status*2\n" +
 	"\tDirection\x12\x06\n" +
 	"\x02UP\x10\x00\x12\b\n" +
 	"\x04DOWN\x10\x01\x12\b\n" +
 	"\x04LEFT\x10\x02\x12\t\n" +
-	"\x05RIGHT\x10\x03*%\n" +
+	"\x05RIGHT\x10\x03*/\n" +
+	"\x06Status\x12\t\n" +
+	"\x05ALIVE\x10\x00\x12\x10\n" +
+	"\fDISCONNECTED\x10\x01\x12\b\n" +
+	"\x04DEAD\x10\x02*\x1e\n" +
+	"\n" +
+	"ActionType\x12\x10\n" +
+	"\fSHOOT_BULLET\x10\x00*\x16\n" +
+	"\bItemType\x12\n" +
+	"\n" +
+	"\x06BULLET\x10\x00*%\n" +
 	"\n" +
 	"ItemStatus\x12\n" +
 	"\n" +
 	"\x06ACTIVE\x10\x00\x12\v\n" +
-	"\aREMOVED\x10\x01*/\n" +
-	"\x06Status\x12\t\n" +
-	"\x05ALIVE\x10\x00\x12\x10\n" +
-	"\fDISCONNECTED\x10\x01\x12\b\n" +
-	"\x04DEAD\x10\x02*\x16\n" +
-	"\bItemType\x12\n" +
-	"\n" +
-	"\x06BULLET\x10\x00*\x1e\n" +
-	"\n" +
-	"ActionType\x12\x10\n" +
-	"\fSHOOT_BULLET\x10\x00B&Z$realtime-communication-server/sharedb\x06proto3"
+	"\aREMOVED\x10\x01B&Z$realtime-communication-server/sharedb\x06proto3"
 
 var (
 	file_game_proto_rawDescOnce sync.Once
@@ -619,25 +619,25 @@ var file_game_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_game_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_game_proto_goTypes = []any{
 	(Direction)(0),              // 0: samplerealtimeserver.Direction
-	(ItemStatus)(0),             // 1: samplerealtimeserver.ItemStatus
-	(Status)(0),                 // 2: samplerealtimeserver.Status
+	(Status)(0),                 // 1: samplerealtimeserver.Status
+	(ActionType)(0),             // 2: samplerealtimeserver.ActionType
 	(ItemType)(0),               // 3: samplerealtimeserver.ItemType
-	(ActionType)(0),             // 4: samplerealtimeserver.ActionType
+	(ItemStatus)(0),             // 4: samplerealtimeserver.ItemStatus
 	(*Position)(nil),            // 5: samplerealtimeserver.Position
 	(*PlayerState)(nil),         // 6: samplerealtimeserver.PlayerState
 	(*Welcome)(nil),             // 7: samplerealtimeserver.Welcome
-	(*ItemState)(nil),           // 8: samplerealtimeserver.ItemState
-	(*PlayerActionRequest)(nil), // 9: samplerealtimeserver.PlayerActionRequest
+	(*PlayerActionRequest)(nil), // 8: samplerealtimeserver.PlayerActionRequest
+	(*ItemState)(nil),           // 9: samplerealtimeserver.ItemState
 }
 var file_game_proto_depIdxs = []int32{
 	5, // 0: samplerealtimeserver.PlayerState.position:type_name -> samplerealtimeserver.Position
 	0, // 1: samplerealtimeserver.PlayerState.direction:type_name -> samplerealtimeserver.Direction
-	2, // 2: samplerealtimeserver.PlayerState.status:type_name -> samplerealtimeserver.Status
+	1, // 2: samplerealtimeserver.PlayerState.status:type_name -> samplerealtimeserver.Status
 	6, // 3: samplerealtimeserver.Welcome.player_state:type_name -> samplerealtimeserver.PlayerState
-	3, // 4: samplerealtimeserver.ItemState.type:type_name -> samplerealtimeserver.ItemType
-	5, // 5: samplerealtimeserver.ItemState.position:type_name -> samplerealtimeserver.Position
-	1, // 6: samplerealtimeserver.ItemState.status:type_name -> samplerealtimeserver.ItemStatus
-	4, // 7: samplerealtimeserver.PlayerActionRequest.type:type_name -> samplerealtimeserver.ActionType
+	2, // 4: samplerealtimeserver.PlayerActionRequest.type:type_name -> samplerealtimeserver.ActionType
+	3, // 5: samplerealtimeserver.ItemState.type:type_name -> samplerealtimeserver.ItemType
+	5, // 6: samplerealtimeserver.ItemState.position:type_name -> samplerealtimeserver.Position
+	4, // 7: samplerealtimeserver.ItemState.status:type_name -> samplerealtimeserver.ItemStatus
 	8, // [8:8] is the sub-list for method output_type
 	8, // [8:8] is the sub-list for method input_type
 	8, // [8:8] is the sub-list for extension type_name

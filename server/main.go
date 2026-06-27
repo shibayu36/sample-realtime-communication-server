@@ -32,7 +32,7 @@ func run() error {
 		return err
 	}
 
-	// Gameの状態更新ループを開始し、更新があればGameServiceがクライアントに配信
+	// ゲームループが更新を検知し、配信ループがそれを全クライアントへ送る
 	updatedCh := g.StartUpdateLoop(ctx)
 	service.StartPublishLoop(ctx, updatedCh)
 
