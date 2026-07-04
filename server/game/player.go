@@ -59,7 +59,7 @@ func (p *Player) UpdateStatus(status PlayerStatus) {
 	p.status = status
 }
 
-// プレイヤーの前方の座標を取得する
+// プレイヤーの前方の位置を取得する
 func (p *Player) FowardPosition() Position {
 	p.mu.RLock()
 	defer p.mu.RUnlock()

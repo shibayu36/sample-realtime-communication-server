@@ -95,7 +95,7 @@ func (g *Game) update(updatedCh chan<- UpdatedResult) {
 			updatedItems = append(updatedItems, item)
 		}
 	}
-	// 更新によって盤面外に出たアイテムを削除する
+	// 更新によってマップ外に出たアイテムを削除する
 	for _, updatedItem := range updatedItems {
 		if !g.isWithinBounds(updatedItem) {
 			g.RemoveItem(updatedItem.ID())
@@ -138,13 +138,13 @@ func (g *Game) detectCollisions() []collision {
 
 	var collisions []collision
 
-	// アイテムを座標ごとにグルーピング
+	// アイテムを位置ごとにグルーピング
 	itemPosMap := make(map[Position][]Item)
 	for _, item := range g.Items {
 		itemPosMap[item.Position()] = append(itemPosMap[item.Position()], item)
 	}
 
-	// プレイヤーと同じ座標にいるアイテムを衝突として検出
+	// プレイヤーと同じ位置にいるアイテムを衝突として検出
 	for _, player := range g.Players {
 		for _, item := range itemPosMap[player.Position()] {
 			collisions = append(collisions, collision{
@@ -157,7 +157,7 @@ func (g *Game) detectCollisions() []collision {
 	return collisions
 }
 
-// アイテムが盤面内にあるかどうかを判定する
+// アイテムがマップ内にあるかどうかを判定する
 func (g *Game) isWithinBounds(item Item) bool {
 	pos := item.Position()
 	return pos.X >= 0 && pos.X < g.Width && pos.Y >= 0 && pos.Y < g.Height

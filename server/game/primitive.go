@@ -5,7 +5,7 @@ type (
 	ItemID   string
 )
 
-// Position はゲーム空間上の座標を表す
+// Position はゲーム空間上の位置を表す
 type Position struct {
 	X int
 	Y int
