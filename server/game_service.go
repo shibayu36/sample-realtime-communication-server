@@ -205,7 +205,7 @@ func (s *GameService) publishItemStates() {
 	removedItems := s.game.GetRemovedItems()
 	slog.Info("publishing item states", "active", len(items), "removed", len(removedItems))
 
-	// Activeなアイテムを送信する
+	// マップ上のアイテムの現在の状態を配信する
 	for _, item := range items {
 		payload, err := proto.Marshal(toActiveSharedItemState(item))
 		if err != nil {
@@ -214,7 +214,7 @@ func (s *GameService) publishItemStates() {
 		s.broker.Broadcast(protocol.MsgItemState, payload)
 	}
 
-	// 削除されたアイテムを送信する
+	// アイテムが消えたことをREMOVEDとして配信する
 	for _, removedItem := range removedItems {
 		itemState := &shared.ItemState{
 			ItemId: string(removedItem.ID()),
