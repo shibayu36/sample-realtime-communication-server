@@ -80,6 +80,7 @@ type PlayerStatus int32
 const (
 	PlayerStatus_ALIVE        PlayerStatus = 0
 	PlayerStatus_DISCONNECTED PlayerStatus = 1 // サーバーから切断を通知するために使う
+	PlayerStatus_DEAD         PlayerStatus = 2 // 弾に当たってやられた状態
 )
 
 // Enum value maps for PlayerStatus.
@@ -87,10 +88,12 @@ var (
 	PlayerStatus_name = map[int32]string{
 		0: "ALIVE",
 		1: "DISCONNECTED",
+		2: "DEAD",
 	}
 	PlayerStatus_value = map[string]int32{
 		"ALIVE":        0,
 		"DISCONNECTED": 1,
+		"DEAD":         2,
 	}
 )
 
@@ -583,10 +586,11 @@ const file_game_proto_rawDesc = "" +
 	"\x02UP\x10\x00\x12\b\n" +
 	"\x04DOWN\x10\x01\x12\b\n" +
 	"\x04LEFT\x10\x02\x12\t\n" +
-	"\x05RIGHT\x10\x03*+\n" +
+	"\x05RIGHT\x10\x03*5\n" +
 	"\fPlayerStatus\x12\t\n" +
 	"\x05ALIVE\x10\x00\x12\x10\n" +
-	"\fDISCONNECTED\x10\x01*\x1e\n" +
+	"\fDISCONNECTED\x10\x01\x12\b\n" +
+	"\x04DEAD\x10\x02*\x1e\n" +
 	"\n" +
 	"ActionType\x12\x10\n" +
 	"\fSHOOT_BULLET\x10\x00*\x16\n" +

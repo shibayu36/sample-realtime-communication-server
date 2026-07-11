@@ -12,7 +12,7 @@ import (
 )
 
 // Game はサーバー側で保持するゲーム空間の状態を管理する。
-// プレイヤー・アイテムの状態管理、ゲームループによる更新を担う。
+// プレイヤー・アイテムの状態管理、ゲームループによる更新、衝突判定を担う。
 type Game struct {
 	Width  int
 	Height int
@@ -29,6 +29,14 @@ type Game struct {
 	mu sync.RWMutex
 }
 
+// gameOperationProvider は衝突時に必要な操作を提供するインターフェース
+type gameOperationProvider interface {
+	RemoveItem(id ItemID)
+	UpdatePlayerStatus(playerID PlayerID, status PlayerStatus) *Player
+}
+
+var _ gameOperationProvider = (*Game)(nil)
+
 func NewGame(width, height int) *Game {
 	return &Game{
 		Width:        width,
@@ -40,10 +48,22 @@ func NewGame(width, height int) *Game {
 	}
 }
 
+type UpdatedResultType string
+
+const (
+	UpdatedResultTypeItemsUpdated   UpdatedResultType = "items_updated"
+	UpdatedResultTypePlayersUpdated UpdatedResultType = "players_updated"
+)
+
+// UpdatedResult はゲームループで何が更新されたかを表す
+type UpdatedResult struct {
+	Type UpdatedResultType
+}
+
 // StartUpdateLoop はゲーム状態を更新するループを開始する。
 // 状態が更新されたことを通知するチャネルを返す。
-func (g *Game) StartUpdateLoop(ctx context.Context) <-chan struct{} {
-	updatedCh := make(chan struct{})
+func (g *Game) StartUpdateLoop(ctx context.Context) <-chan UpdatedResult {
+	updatedCh := make(chan UpdatedResult)
 
 	go func() {
 		defer close(updatedCh)
@@ -64,10 +84,11 @@ func (g *Game) StartUpdateLoop(ctx context.Context) <-chan struct{} {
 }
 
 // update は1tickごとのゲーム状態更新を行う。状態が変化したらupdatedChに通知する。
-func (g *Game) update(updatedCh chan<- struct{}) {
+func (g *Game) update(updatedCh chan<- UpdatedResult) {
 	items := g.GetItems()
 
 	updatedItems := []Item{}
+	updatedPlayers := []*Player{}
 
 	// 各アイテムを1tick進める
 	for _, item := range items {
@@ -82,6 +103,17 @@ func (g *Game) update(updatedCh chan<- struct{}) {
 		}
 	}
 
+	// プレイヤーとアイテムの衝突を検出し、それぞれに衝突時の処理を委譲する
+	for _, collision := range g.detectCollisions() {
+		if collision.Player.OnCollideWith(collision.Item, g) {
+			updatedPlayers = append(updatedPlayers, collision.Player)
+		}
+
+		if collision.Item.OnCollideWith(collision.Player, g) {
+			updatedItems = append(updatedItems, collision.Item)
+		}
+	}
+
 	// このtick中に追加されたアイテムを取り込む
 	g.mu.Lock()
 	for _, item := range g.AddedItems {
@@ -91,8 +123,38 @@ func (g *Game) update(updatedCh chan<- struct{}) {
 	g.mu.Unlock()
 
 	if len(updatedItems) > 0 {
-		updatedCh <- struct{}{}
+		updatedCh <- UpdatedResult{Type: UpdatedResultTypeItemsUpdated}
 	}
+
+	if len(updatedPlayers) > 0 {
+		updatedCh <- UpdatedResult{Type: UpdatedResultTypePlayersUpdated}
+	}
+}
+
+// detectCollisions は現在のゲーム状態から衝突しているオブジェクトのペアを検出する
+func (g *Game) detectCollisions() []collision {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	var collisions []collision
+
+	// アイテムを位置ごとにグルーピング
+	itemPosMap := make(map[Position][]Item)
+	for _, item := range g.Items {
+		itemPosMap[item.Position()] = append(itemPosMap[item.Position()], item)
+	}
+
+	// プレイヤーと同じ位置にいるアイテムを衝突として検出
+	for _, player := range g.Players {
+		for _, item := range itemPosMap[player.Position()] {
+			collisions = append(collisions, collision{
+				Player: player,
+				Item:   item,
+			})
+		}
+	}
+
+	return collisions
 }
 
 // アイテムがマップ内にあるかどうかを判定する
@@ -109,6 +171,7 @@ func (g *Game) AddPlayer(playerID PlayerID) *Player {
 		PlayerID:  playerID,
 		position:  Position{X: rand.Intn(g.Width), Y: rand.Intn(g.Height)},
 		direction: DirectionUp,
+		status:    PlayerStatusAlive,
 	}
 	g.Players[playerID] = player
 	return player
@@ -132,6 +195,18 @@ func (g *Game) MovePlayer(playerID PlayerID, position Position, direction Direct
 	return player
 }
 
+func (g *Game) UpdatePlayerStatus(playerID PlayerID, status PlayerStatus) *Player {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	player, ok := g.Players[playerID]
+	if !ok {
+		return nil
+	}
+	player.UpdateStatus(status)
+	return player
+}
+
 func (g *Game) GetPlayers() map[PlayerID]*Player {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -145,6 +220,11 @@ func (g *Game) ShootBullet(playerID PlayerID) ItemID {
 
 	player, ok := g.Players[playerID]
 	if !ok {
+		return ItemID("")
+	}
+
+	// deadの場合は弾を発射できない
+	if player.Status() == PlayerStatusDead {
 		return ItemID("")
 	}
 

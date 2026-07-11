@@ -16,6 +16,7 @@ import (
 type Player struct {
 	Position  Position
 	Direction shared.Direction
+	Status    shared.PlayerStatus
 }
 
 type Position struct {
@@ -99,6 +100,7 @@ func run() error {
 			Y: int(myPlayerState.GetPosition().GetY()),
 		},
 		Direction: myPlayerState.GetDirection(),
+		Status:    myPlayerState.GetStatus(),
 	}
 
 	// サーバーからのメッセージを別goroutineで受信し続ける
@@ -159,7 +161,7 @@ func (g *Game) publishMyState() {
 }
 
 // handleMessage はサーバーから受信したメッセージを処理する。
-// 他プレイヤーの状態変化（移動・切断）を players map に反映する。
+// 他プレイヤーの状態変化（移動・切断・やられた）を players map に反映する。
 func (g *Game) handleMessage(msg protocol.Message) {
 	switch msg.Type {
 	case protocol.MsgPlayerState:
@@ -179,6 +181,7 @@ func (g *Game) handleMessage(msg protocol.Message) {
 				Y: int(playerState.GetPosition().GetY()),
 			},
 			Direction: playerState.GetDirection(),
+			Status:    playerState.GetStatus(),
 		}
 	case protocol.MsgItemState:
 		// 弾などのアイテム状態が配信されてくる（アイテムの移動や状態はサーバーが計算する）
@@ -329,18 +332,29 @@ func (g *Game) draw() {
 	g.screen.Show()
 }
 
-var myPlayerRunes = map[shared.Direction]rune{
-	shared.Direction_UP:    '▲',
-	shared.Direction_DOWN:  '▼',
-	shared.Direction_LEFT:  '◀',
-	shared.Direction_RIGHT: '▶',
+type playerRunes struct {
+	directions map[shared.Direction]rune
+	dead       rune
 }
 
-var otherPlayerRunes = map[shared.Direction]rune{
-	shared.Direction_UP:    '^',
-	shared.Direction_DOWN:  'v',
-	shared.Direction_LEFT:  '<',
-	shared.Direction_RIGHT: '>',
+var myPlayerRunes = playerRunes{
+	directions: map[shared.Direction]rune{
+		shared.Direction_UP:    '▲',
+		shared.Direction_DOWN:  '▼',
+		shared.Direction_LEFT:  '◀',
+		shared.Direction_RIGHT: '▶',
+	},
+	dead: 'X',
+}
+
+var otherPlayerRunes = playerRunes{
+	directions: map[shared.Direction]rune{
+		shared.Direction_UP:    '^',
+		shared.Direction_DOWN:  'v',
+		shared.Direction_LEFT:  '<',
+		shared.Direction_RIGHT: '>',
+	},
+	dead: 'x',
 }
 
 func getPlayerRune(player Player, isMyPlayer bool) rune {
@@ -348,5 +362,8 @@ func getPlayerRune(player Player, isMyPlayer bool) rune {
 	if isMyPlayer {
 		runes = myPlayerRunes
 	}
-	return runes[player.Direction]
+	if player.Status == shared.PlayerStatus_DEAD {
+		return runes.dead
+	}
+	return runes.directions[player.Direction]
 }
