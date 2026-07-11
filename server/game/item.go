@@ -8,6 +8,7 @@ const (
 
 // Item はゲームループで管理されるゲームオブジェクトを表す
 type Item interface {
+	collidable
 	ID() ItemID
 	Type() ItemType
 	Position() Position

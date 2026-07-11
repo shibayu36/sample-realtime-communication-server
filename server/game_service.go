@@ -177,15 +177,21 @@ func (s *GameService) OnDisconnected(client *Client) error {
 }
 
 // StartPublishLoop はゲームループで更新された状態を検知し、クライアントに配信するループを開始する
-func (s *GameService) StartPublishLoop(ctx context.Context, updatedCh <-chan struct{}) {
+func (s *GameService) StartPublishLoop(ctx context.Context, updatedCh <-chan game.UpdatedResult) {
 	go func() {
 		for {
 			select {
-			case _, ok := <-updatedCh:
+			case updatedResult, ok := <-updatedCh:
 				if !ok {
 					return
 				}
-				s.publishItemStates()
+				// 何が更新されたかに応じて、アイテムかプレイヤーの状態を配信する
+				switch updatedResult.Type {
+				case game.UpdatedResultTypeItemsUpdated:
+					s.publishItemStates()
+				case game.UpdatedResultTypePlayersUpdated:
+					s.publishPlayerStates()
+				}
 			case <-ctx.Done():
 				return
 			}
@@ -228,6 +234,17 @@ func (s *GameService) publishItemStates() {
 	}
 }
 
+// publishPlayerStates は全プレイヤーの現在の状態をクライアントに配信する
+func (s *GameService) publishPlayerStates() {
+	for _, player := range s.game.GetPlayers() {
+		payload, err := proto.Marshal(toSharedPlayerState(player))
+		if err != nil {
+			continue
+		}
+		s.broker.Broadcast(protocol.MsgPlayerState, payload)
+	}
+}
+
 func toActiveSharedItemState(item game.Item) *shared.ItemState {
 	var itemType shared.ItemType
 	switch item.Type() {
@@ -249,6 +266,16 @@ func toActiveSharedItemState(item game.Item) *shared.ItemState {
 }
 
 func toSharedPlayerState(player *game.Player) *shared.PlayerState {
+	var status shared.PlayerStatus
+	switch player.Status() {
+	case game.PlayerStatusAlive:
+		status = shared.PlayerStatus_ALIVE
+	case game.PlayerStatusDead:
+		status = shared.PlayerStatus_DEAD
+	default:
+		panic(fmt.Sprintf("invalid player status: %s", player.Status()))
+	}
+
 	return &shared.PlayerState{
 		PlayerId: string(player.PlayerID),
 		Position: &shared.Position{
@@ -256,7 +283,7 @@ func toSharedPlayerState(player *game.Player) *shared.PlayerState {
 			Y: int32(player.Position().Y),
 		},
 		Direction: toSharedDirection(player.Direction()),
-		Status:    shared.PlayerStatus_ALIVE,
+		Status:    status,
 	}
 }
 

@@ -36,6 +36,7 @@ message Welcome {
 enum PlayerStatus {
   ALIVE = 0;
   DISCONNECTED = 1; // サーバーから切断を通知するために使う
+  DEAD = 2;         // 弾に当たってやられた状態
 }
 
 // プレイヤーからのアクション

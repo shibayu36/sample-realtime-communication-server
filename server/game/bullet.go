@@ -62,3 +62,14 @@ func (b *Bullet) Update() bool {
 	}
 	return false
 }
+
+func (b *Bullet) OnCollideWith(other collidable, provider gameOperationProvider) bool {
+	switch other.(type) {
+	case *Player:
+		// プレイヤーと衝突したら自分自身は消滅
+		provider.RemoveItem(b.ID())
+		return true
+	default:
+		return false
+	}
+}
