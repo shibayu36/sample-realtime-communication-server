@@ -105,7 +105,7 @@ func (s *GameService) OnDisconnected(client *Client) error {
 
 	playerState := &shared.PlayerState{
 		PlayerId: client.ID(),
-		Status:   shared.Status_DISCONNECTED,
+		Status:   shared.PlayerStatus_DISCONNECTED,
 	}
 	payload, err := proto.Marshal(playerState)
 	if err != nil {
@@ -246,12 +246,12 @@ func (s *GameService) publishPlayerStates() {
 }
 
 func toSharedPlayerState(player *game.Player) *shared.PlayerState {
-	var status shared.Status
+	var status shared.PlayerStatus
 	switch player.Status() {
 	case game.PlayerStatusAlive:
-		status = shared.Status_ALIVE
+		status = shared.PlayerStatus_ALIVE
 	case game.PlayerStatusDead:
-		status = shared.Status_DEAD
+		status = shared.PlayerStatus_DEAD
 	default:
 		panic(fmt.Sprintf("invalid player status: %s", player.Status()))
 	}

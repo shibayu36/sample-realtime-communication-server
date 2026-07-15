@@ -17,7 +17,7 @@ type Player struct {
 	ID        string
 	Position  Position
 	Direction shared.Direction
-	Status    shared.Status
+	Status    shared.PlayerStatus
 }
 
 type Position struct {
@@ -174,7 +174,7 @@ func (g *Game) handleMessage(msg protocol.Message) {
 			return
 		}
 
-		if playerState.GetStatus() == shared.Status_DISCONNECTED {
+		if playerState.GetStatus() == shared.PlayerStatus_DISCONNECTED {
 			delete(g.players, playerState.GetPlayerId())
 			return
 		}
@@ -364,7 +364,7 @@ func getPlayerRune(player Player, isMyPlayer bool) rune {
 	if isMyPlayer {
 		runes = myPlayerRunes
 	}
-	if player.Status == shared.Status_DEAD {
+	if player.Status == shared.PlayerStatus_DEAD {
 		return runes.dead
 	}
 	if r, ok := runes.directions[player.Direction]; ok {
