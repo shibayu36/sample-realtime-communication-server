@@ -42,7 +42,7 @@ func (b *Bullet) Position() Position {
 }
 
 // Update はmoveTickごとに弾を1マス進める。
-func (b *Bullet) Update() bool {
+func (b *Bullet) Update(provider gameOperationProvider) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.tick++

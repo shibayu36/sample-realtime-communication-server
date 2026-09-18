@@ -224,6 +224,8 @@ func (g *Game) handleEvent(event tcell.Event) bool {
 		case tcell.KeyRune:
 			if ev.Str() == " " {
 				g.shootBullet()
+			} else if ev.Str() == "b" {
+				g.placeBomb()
 			}
 		}
 	}
@@ -283,6 +285,23 @@ func (g *Game) shootBullet() {
 	})
 }
 
+// placeBomb はボム設置アクションをサーバーに送信する。
+func (g *Game) placeBomb() {
+	req := &shared.PlayerActionRequest{
+		Type: shared.ActionType_PLACE_BOMB,
+	}
+
+	data, err := proto.Marshal(req)
+	if err != nil {
+		return
+	}
+
+	protocol.WriteMessage(g.conn, protocol.Message{
+		Type:    protocol.MsgPlayerAction,
+		Payload: data,
+	})
+}
+
 func (g *Game) getMyPlayer() Player {
 	return g.players[g.myPlayerID]
 }
@@ -321,6 +340,22 @@ func (g *Game) draw() {
 				item.Position.X,
 				item.Position.Y,
 				'*',
+				nil,
+				style,
+			)
+		case shared.ItemType_BOMB:
+			g.screen.SetContent(
+				item.Position.X,
+				item.Position.Y,
+				'@',
+				nil,
+				style,
+			)
+		case shared.ItemType_BOMB_FIRE:
+			g.screen.SetContent(
+				item.Position.X,
+				item.Position.Y,
+				'#',
 				nil,
 				style,
 			)

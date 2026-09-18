@@ -28,9 +28,10 @@ type Game struct {
 	mu sync.RWMutex
 }
 
-// gameOperationProvider は衝突時に必要な操作を提供するインターフェース
+// gameOperationProvider はアイテム更新や衝突時に必要な操作を提供するインターフェース
 type gameOperationProvider interface {
 	RemoveItem(id ItemID)
+	AddItem(item Item)
 	UpdatePlayerStatus(playerID PlayerID, status PlayerStatus) *Player
 }
 
@@ -91,7 +92,7 @@ func (g *Game) update(updatedCh chan<- UpdatedResult) {
 
 	// 各アイテムを1tick進める
 	for _, item := range items {
-		if item.Update() {
+		if item.Update(g) {
 			updatedItems = append(updatedItems, item)
 		}
 	}
@@ -237,12 +238,42 @@ func (g *Game) ShootBullet(playerID PlayerID) ItemID {
 	return bullet.ID()
 }
 
+// PlaceBomb はプレイヤーの前方にボムを置く。爆発のタイミングはゲームループが管理する。
+func (g *Game) PlaceBomb(playerID PlayerID) ItemID {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	player, ok := g.Players[playerID]
+	if !ok {
+		return ItemID("")
+	}
+
+	// deadの場合はボムを置けない
+	if player.Status() == PlayerStatusDead {
+		return ItemID("")
+	}
+
+	// プレイヤーの前方に置く
+	position := player.ForwardPosition()
+
+	bomb := NewBomb(ItemID(uuid.New().String()), position)
+	g.addItemWithoutLock(bomb)
+
+	return bomb.ID()
+}
+
 // アイテム追加をLockなしで行う内部メソッド
 func (g *Game) addItemWithoutLock(item Item) {
 	if g.isWithinBounds(item) {
 		g.Items[item.ID()] = item
 		g.AddedItems[item.ID()] = item
 	}
+}
+
+func (g *Game) AddItem(item Item) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.addItemWithoutLock(item)
 }
 
 func (g *Game) GetItems() map[ItemID]Item {

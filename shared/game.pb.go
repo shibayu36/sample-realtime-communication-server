@@ -129,15 +129,18 @@ type ActionType int32
 
 const (
 	ActionType_SHOOT_BULLET ActionType = 0 // 弾の発射
+	ActionType_PLACE_BOMB   ActionType = 1 // ボムの設置
 )
 
 // Enum value maps for ActionType.
 var (
 	ActionType_name = map[int32]string{
 		0: "SHOOT_BULLET",
+		1: "PLACE_BOMB",
 	}
 	ActionType_value = map[string]int32{
 		"SHOOT_BULLET": 0,
+		"PLACE_BOMB":   1,
 	}
 )
 
@@ -172,16 +175,22 @@ func (ActionType) EnumDescriptor() ([]byte, []int) {
 type ItemType int32
 
 const (
-	ItemType_BULLET ItemType = 0
+	ItemType_BULLET    ItemType = 0
+	ItemType_BOMB      ItemType = 1
+	ItemType_BOMB_FIRE ItemType = 2 // ボムの爆風
 )
 
 // Enum value maps for ItemType.
 var (
 	ItemType_name = map[int32]string{
 		0: "BULLET",
+		1: "BOMB",
+		2: "BOMB_FIRE",
 	}
 	ItemType_value = map[string]int32{
-		"BULLET": 0,
+		"BULLET":    0,
+		"BOMB":      1,
+		"BOMB_FIRE": 2,
 	}
 )
 
@@ -590,13 +599,17 @@ const file_game_proto_rawDesc = "" +
 	"\fPlayerStatus\x12\t\n" +
 	"\x05ALIVE\x10\x00\x12\x10\n" +
 	"\fDISCONNECTED\x10\x01\x12\b\n" +
-	"\x04DEAD\x10\x02*\x1e\n" +
+	"\x04DEAD\x10\x02*.\n" +
 	"\n" +
 	"ActionType\x12\x10\n" +
-	"\fSHOOT_BULLET\x10\x00*\x16\n" +
+	"\fSHOOT_BULLET\x10\x00\x12\x0e\n" +
+	"\n" +
+	"PLACE_BOMB\x10\x01*/\n" +
 	"\bItemType\x12\n" +
 	"\n" +
-	"\x06BULLET\x10\x00*%\n" +
+	"\x06BULLET\x10\x00\x12\b\n" +
+	"\x04BOMB\x10\x01\x12\r\n" +
+	"\tBOMB_FIRE\x10\x02*%\n" +
 	"\n" +
 	"ItemStatus\x12\n" +
 	"\n" +
