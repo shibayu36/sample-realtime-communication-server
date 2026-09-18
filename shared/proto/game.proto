@@ -47,6 +47,7 @@ message PlayerActionRequest {
 // プレイヤーからのアクションの種類
 enum ActionType {
   SHOOT_BULLET = 0; // 弾の発射
+  PLACE_BOMB = 1; // ボムの設置
 }
 
 // アイテムの状態
@@ -60,6 +61,8 @@ message ItemState {
 // アイテムの種類
 enum ItemType {
   BULLET = 0;
+  BOMB = 1;
+  BOMB_FIRE = 2; // ボムの爆風
 }
 
 // アイテムのステータス

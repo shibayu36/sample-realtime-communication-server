@@ -3,7 +3,9 @@ package game
 type ItemType string
 
 const (
-	ItemTypeBullet ItemType = "bullet"
+	ItemTypeBullet   ItemType = "bullet"
+	ItemTypeBomb     ItemType = "bomb"
+	ItemTypeBombFire ItemType = "bomb_fire"
 )
 
 // Item はゲームループで管理されるゲームオブジェクトを表す
@@ -13,5 +15,5 @@ type Item interface {
 	Type() ItemType
 	Position() Position
 	// Update はゲームループの1tickごとに呼ばれる。状態が変更された場合はtrueを返す。
-	Update() bool
+	Update(provider gameOperationProvider) bool
 }

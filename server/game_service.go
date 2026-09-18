@@ -150,6 +150,9 @@ func (s *GameService) onReceivePlayerAction(client *Client, payload []byte) erro
 	case shared.ActionType_SHOOT_BULLET:
 		bulletID := s.game.ShootBullet(playerID)
 		slog.Info("received shoot action", "playerId", client.ID(), "bulletId", bulletID)
+	case shared.ActionType_PLACE_BOMB:
+		bombID := s.game.PlaceBomb(playerID)
+		slog.Info("received place bomb action", "playerId", client.ID(), "bombId", bombID)
 	}
 
 	return nil
@@ -250,6 +253,10 @@ func toActiveSharedItemState(item game.Item) *shared.ItemState {
 	switch item.Type() {
 	case game.ItemTypeBullet:
 		itemType = shared.ItemType_BULLET
+	case game.ItemTypeBomb:
+		itemType = shared.ItemType_BOMB
+	case game.ItemTypeBombFire:
+		itemType = shared.ItemType_BOMB_FIRE
 	default:
 		panic(fmt.Sprintf("invalid item type: %s", item.Type()))
 	}

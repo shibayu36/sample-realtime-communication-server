@@ -69,8 +69,8 @@ func (p *Player) ForwardPosition() Position {
 
 func (p *Player) OnCollideWith(other collidable, provider gameOperationProvider) bool {
 	switch other.(type) {
-	case *Bullet:
-		// 弾と衝突したらプレイヤーはDEAD
+	case *Bullet, *BombFire:
+		// 弾か爆風と衝突したらプレイヤーはDEAD
 		provider.UpdatePlayerStatus(p.PlayerID, PlayerStatusDead)
 		return true
 	default:
